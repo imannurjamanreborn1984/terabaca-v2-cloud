@@ -70,40 +70,63 @@ async function uploadKeSupabaseStorage(file, prefix = 'file') {
 }
 
 // 1. HALAMAN UTAMA / PORTAL UTAMA
+// 1. HALAMAN UTAMA / PORTAL UTAMA
 app.get('/', (req, res) => {
     res.send(`
-        <body style="background-color: #F8F9FA; margin: 0; padding: 20px;">
-            <div style="font-family: 'Segoe UI', sans-serif; max-width: 650px; margin: 20px auto; padding: 30px; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); background-color: white;">
-                <h2 style="color: #7A4B94; text-align: center; margin-bottom: 5px;">Portal Utama TERABACA V2</h2>
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+            <meta charset="UTF-8">
+            <!-- MANTRA UNTUK TAMPILAN HP 👇 -->
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Portal Terabaca</title>
+            <style>
+                /* Mengatur agar form dan tombol responsif di layar kecil */
+                .grup-tombol { display: flex; gap: 10px; flex-wrap: wrap; }
+                .tombol-daftar { flex: 1 1 100%; text-align: center; padding: 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; color: white; box-sizing: border-box; }
+                .grup-form-klien { display: flex; gap: 10px; flex-wrap: wrap; }
+                .input-klien { flex: 1 1 100%; }
+                
+                /* Jika layar lebih lebar dari 600px (Laptop/Tablet), kembalikan ke bentuk menyamping */
+                @media (min-width: 600px) {
+                    .tombol-daftar { flex: 1; }
+                    .input-klien { flex: 1; }
+                }
+            </style>
+        </head>
+        <body style="background-color: #F8F9FA; margin: 0; padding: 15px;">
+            <div style="font-family: 'Segoe UI', sans-serif; max-width: 650px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); background-color: white;">
+                <h2 style="color: #7A4B94; text-align: center; margin-top: 0; margin-bottom: 5px;">Portal Utama TERABACA V2</h2>
                 <p style="color: #6b7280; text-align: center; margin-top: 0; font-size: 14px;">Kabupaten Tasikmalaya (Cloud Connected)</p>
                 <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
                 
                 <div style="margin-bottom: 20px; padding: 15px; border: 1px dashed #7A4B94; border-radius: 6px; background-color: #faf5ff;">
-                    <h4 style="margin: 0 0 10px 0; color: #7A4B94;">📋 JALUR PENDAFTARAN KLIEN BARU</h4>
-                    <div style="display: flex; gap: 10px;">
-                        <a href="/portal/sekolah-baru" style="flex: 1; text-align: center; background-color: #C73238; color: white; padding: 10px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 13px;">Sekolah Baru</a>
-                        <a href="/portal/sekolah-lama" style="flex: 1; text-align: center; background-color: #1A5B9C; color: white; padding: 10px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 13px;">Repeat Order Sekolah</a>
-                        <a href="/portal/personal" style="flex: 1; text-align: center; background-color: #7A4B94; color: white; padding: 10px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 13px;">Klien Personal</a>
+                    <h4 style="margin: 0 0 15px 0; color: #7A4B94; text-align: center;">📋 JALUR PENDAFTARAN KLIEN BARU</h4>
+                    <div class="grup-tombol">
+                        <a href="/portal/sekolah-baru" class="tombol-daftar" style="background-color: #C73238;">Sekolah Baru</a>
+                        <a href="/portal/sekolah-lama" class="tombol-daftar" style="background-color: #1A5B9C;">Repeat Order Sekolah</a>
+                        <a href="/portal/personal" class="tombol-daftar" style="background-color: #7A4B94;">Klien Personal</a>
                     </div>
                 </div>
 
                 <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #1A5B9C; border-radius: 6px; background-color: #f0f7ff;">
-                    <h4 style="margin: 0 0 5px 0; color: #1A5B9C;">📥 PORTAL MANDIRI KLIEN (WORKSPACE & INVOICE)</h4>
-                    <p style="margin: 0 0 12px 0; font-size: 12px; color: #4b5563;">Masukkan ID Order Anda di bawah ini untuk melihat Invoice atau mengunggah berkas siswa:</p>
-                    <form action="/portal/cek-akses-klien" method="POST" style="display:flex; gap:10px;">
-                        <input type="text" name="id_order_input" placeholder="Contoh: TRBC-1234" required style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px;">
-                        <button type="submit" style="background-color:#1A5B9C; color:white; border:none; padding:8px 15px; border-radius:6px; font-weight:bold; cursor:pointer;">Buka Portal Klien</button>
+                    <h4 style="margin: 0 0 10px 0; color: #1A5B9C;">📥 PORTAL MANDIRI KLIEN</h4>
+                    <p style="margin: 0 0 15px 0; font-size: 13px; color: #4b5563;">Masukkan ID Order Anda di bawah ini untuk melihat Invoice atau mengunggah berkas siswa:</p>
+                    <form action="/portal/cek-akses-klien" method="POST" class="grup-form-klien">
+                        <input type="text" name="id_order_input" placeholder="Contoh: TRBC-1234" required class="input-klien" style="padding:12px; border:1px solid #ccc; border-radius:6px; box-sizing: border-box; font-size: 14px;">
+                        <button type="submit" class="input-klien" style="background-color:#1A5B9C; color:white; border:none; padding:12px 15px; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 14px;">Buka Portal Klien</button>
                     </form>
                 </div>
 
                 <div style="padding: 15px; border: 1px solid #7A4B94; border-radius: 6px; background-color: #fdfcff; text-align: center;">
                     <h4 style="margin: 0 0 10px 0; color: #7A4B94; text-align: left;">⚙ RUANG INTERNAL (KABAG & ADMIN)</h4>
-                    <a href="/internal/login-page" style="display: block; background-color: #7A4B94; color: white; padding: 12px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+                    <a href="/internal/login-page" style="display: block; background-color: #7A4B94; color: white; padding: 15px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px;">
                         🔒 Masuk ke Dashboard Manajemen Kinerja
                     </a>
                 </div>
             </div>
         </body>
+        </html>
     `);
 });
 
@@ -367,51 +390,61 @@ app.get('/portal/invoice/:id', async (req, res) => {
 
 // ROUTE MENU FORM REGISTRASI
 // ROUTE MENU FORM REGISTRASI (Sekolah)
+// ROUTE MENU FORM REGISTRASI (Sekolah)
 app.get('/portal/sekolah-:tipe', (req, res) => {
     const tipeSekolah = req.params.tipe;
     res.send(`
-    <body style="background-color: #F8F9FA; padding: 20px;">
-        <div style="font-family:'Segoe UI',sans-serif;max-width:600px;margin:20px auto;padding:30px;border:1px solid #e5e7eb;border-radius:8px; background-color: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-            <h3 style="color: #7A4B94;">Form Lembaga (${tipeSekolah.toUpperCase()})</h3>
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Form Lembaga - Terabaca</title>
+    </head>
+    <body style="background-color: #F8F9FA; padding: 15px; margin: 0;">
+        <div style="font-family:'Segoe UI',sans-serif;max-width:600px;margin:10px auto;padding:20px;border:1px solid #e5e7eb;border-radius:8px; background-color: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+            <!-- Sisa kode form sekolah sama seperti sebelumnya... -->
+            <h3 style="color: #7A4B94; margin-top:0;">Form Lembaga (${tipeSekolah.toUpperCase()})</h3>
             <form action="/proses-pendaftaran" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="jenis_pendaftar" value="lembaga">
                 <input type="hidden" name="kategori" value="Lembaga (${tipeSekolah})">
                 
                 <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Lembaga/Sekolah:</label>
-                <input type="text" name="nama_lembaga" required style="width:100%;padding:10px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <input type="text" name="nama_lembaga" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                 
                 <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Cabang:</label>
-                <input type="text" name="nama_cabang" required style="width:100%;padding:10px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <input type="text" name="nama_cabang" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
 
                 <label style="font-size:14px; color:#4b5563; font-weight:bold;">Pilih Paket:</label>
-                <select name="kode_paket" style="width:100%;padding:10px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <select name="kode_paket" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                     <option value="basic">Basic</option>
                     <option value="parent">Parent</option>
                     <option value="talent">Talent</option>
                 </select>
                 
                 <label style="font-size:14px; color:#4b5563; font-weight:bold;">Jumlah Testee:</label>
-                <input type="number" name="jumlah_testee" required style="width:100%;padding:10px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <input type="number" name="jumlah_testee" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
 
                 <label style="font-size:14px; color:#4b5563; font-weight:bold;">Level/Kelas:</label>
-                <input type="text" name="level" placeholder="Misal: Kelas 5" style="width:100%;padding:10px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <input type="text" name="level" placeholder="Misal: Kelas 5" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                 
                 <label style="font-size:14px; color:#4b5563; font-weight:bold;">Jurusan (Khusus Talent):</label>
-                <input type="text" name="jurusan" placeholder="Misal: IPA" style="width:100%;padding:10px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <input type="text" name="jurusan" placeholder="Misal: IPA" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                 
                 <label style="font-size:14px; color:#4b5563; font-weight:bold;">WhatsApp:</label>
-                <input type="text" name="kontak" required style="width:100%;padding:10px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <input type="text" name="kontak" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                 
                 <label style="font-size:14px; color:#4b5563; font-weight:bold;">Tanggal Pelaksanaan Tes:</label>
-                <input type="date" name="tgl_pelaksanaan" required style="width:100%;padding:10px;margin-bottom:20px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <input type="date" name="tgl_pelaksanaan" required style="width:100%;padding:12px;margin-bottom:20px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                 
                 <label style="font-size:14px; color:#4b5563; font-weight:bold; display:block;">Bukti DP Pembayaran:</label>
-                <input type="file" name="bukti_bayar" required style="margin-bottom: 20px;"><br>
+                <input type="file" name="bukti_bayar" required style="margin-bottom: 20px; width:100%;"><br>
                 
-                <button type="submit" style="width:100%;padding:12px;background:#7A4B94;color:#fff;border:none; border-radius:4px; font-weight:bold; cursor:pointer;">Kirim Pendaftaran</button>
+                <button type="submit" style="width:100%;padding:14px;background:#7A4B94;color:#fff;border:none; border-radius:6px; font-weight:bold; font-size:15px; cursor:pointer;">Kirim Pendaftaran</button>
             </form>
         </div>
-    </body>`);
+    </body>
+    </html>`);
 });
 
 // LOGIN INTERNAL
