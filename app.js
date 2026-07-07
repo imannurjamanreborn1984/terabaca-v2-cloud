@@ -13,6 +13,16 @@ const upload = multer({ storage: storage });
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('./'));
+// JALUR KHUSUS DOWNLOAD TEMPLATE EXCEL
+app.get('/template-siswa.xlsx', (req, res) => {
+    const lokasiFile = path.join(__dirname, 'template-siswa.xlsx');
+    res.download(lokasiFile, 'template-siswa.xlsx', (err) => {
+        if (err) {
+            console.error("File tidak ditemukan:", err);
+            res.status(404).send("Maaf, file template belum tersedia di server.");
+        }
+    });
+});
 
 // ====================================================================
 // KONEKSI UTAMA KE SUPABASE CLOUD 
