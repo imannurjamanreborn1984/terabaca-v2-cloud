@@ -528,31 +528,25 @@ app.get('/internal/lihat-siswa/:id', pastikanInternal, async (req, res) => {
 
     let daftarAnakHtml = '';
     
-    // Perulangan yang aman (menangani jika data_siswa kosong)
+    let daftarAnakHtml = '';
+    
+    // Perulangan untuk membuat daftar siswa
     (order.data_siswa || []).forEach((siswa) => {
-        // Menggunakan || '' untuk mencegah error .startsWith pada nilai null
         const fileScan = siswa.fileScanLokal || '';
         const isUploaded = fileScan.startsWith('http');
         
         daftarAnakHtml += `
-            <div style="padding:10px; border:1px solid #ccc; margin-bottom:5px;">
-                <p>Nama: ${siswa.namaSiswa}</p>
-                <p>Status: ${isUploaded ? '✅ Sudah Upload' : '❌ Belum Ada Berkas'}</p>
-            </div>
-        `;
-    });
-        
-        daftarAnakHtml += `
-            <div>
-                <p>Nama: ${siswa.namaSiswa}</p>
-                <p>Status: ${isUploaded ? 'Sudah Upload' : 'Belum Ada Berkas'}</p>
+            <div style="padding:10px; border:1px solid #ccc; margin-bottom:5px; border-radius:4px;">
+                <p style="margin:0; font-weight:bold;">👤 Nama: ${siswa.namaSiswa}</p>
+                <p style="margin:5px 0 0 0; font-size:13px;">Status: ${isUploaded ? '✅ Sudah Upload' : '❌ Belum Ada Berkas'}</p>
             </div>
         `;
     });
 
-    res.send(daftarAnakHtml);
-
+    // Kirim satu kali saja dengan template HTML lengkap
     res.send(`
+        <!DOCTYPE html>
+        <html lang="id">
         <body style="background-color: #F8F9FA; padding: 20px; margin: 0;">
             <div style="font-family:'Segoe UI',sans-serif; max-width:750px; margin:20px auto; padding:30px; border:1px solid #e5e7eb; border-radius:8px; background-color: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                 <a href="/internal/dashboard" style="text-decoration:none; color:#1A5B9C; font-size:14px; font-weight:bold;">← Kembali ke Dashboard</a>
@@ -572,8 +566,9 @@ app.get('/internal/lihat-siswa/:id', pastikanInternal, async (req, res) => {
                 <div style="display:flex; flex-direction:column; gap:8px;">${daftarAnakHtml}</div>
             </div>
         </body>
+        </html>
     `);
-`})`
+});
 
 // ROUTE INTERNAL PENDUKUNG
 app.get('/internal/tandai-terkirim/:idOrder/:idSiswa', async (req, res) => {
