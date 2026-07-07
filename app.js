@@ -175,6 +175,29 @@ app.post('/portal/cek-akses-klien', async (req, res) => {
 });
 
 // UPLOAD EXCEL (.XLSX) MASSAL
+// RUTE TAMBAH SISWA MANUAL
+app.post('/portal/tambah-siswa-manual/:idOrder', async (req, res) => {
+    const { idOrder } = req.params;
+    const { namaSiswa, gender, keterangan } = req.body;
+
+    // 1. Ambil data order saat ini
+    const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
+
+    // 2. Siapkan data baru
+    let listSiswa = order.data_siswa || [];
+    listSiswa.push({
+        id: Date.now(), // ID unik berdasarkan waktu
+        namaSiswa: namaSiswa,
+        gender: gender,
+        keterangan: keterangan,
+        fileScanLokal: null // Kosongkan dulu
+    });
+
+    // 3. Simpan kembali ke Supabase
+    await supabase.from('orders').update({ data_siswa: listSiswa }).eq('id_order', idOrder);
+
+    res.redirect(`/portal/workspace-klien/${idOrder}`);
+});
 // UPLOAD EXCEL (.XLSX) MASSAL (VERSI TEMPLATE RESMI)
 app.post('/portal/upload-excel-massal/:idOrder', upload.single('file_excel'), async (req, res) => {
     const idOrder = req.params.idOrder;
@@ -314,6 +337,20 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
                         <input type="hidden" name="asal_halaman" value="klien">
                         <input type="file" name="file_excel" accept=".xlsx, .xls" required style="flex:1 1 200px; font-size:13px; border:1px solid #e5e7eb; padding:8px; border-radius:4px; cursor:pointer;">
                         <button type="submit" style="background-color:#45A6D9; color:white; border:none; padding:10px 15px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px; flex:1 1 150px;">⚡ Upload & Sinkronisasi</button>
+                    </form>
+                </div>
+
+                <!-- FORM INPUT MANUAL -->
+                <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd;">
+                    <h4 style="margin-top: 0;">Tambah Siswa Manual:</h4>
+                    <form action="/portal/tambah-siswa-manual/${order.id_order}" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <input type="text" name="namaSiswa" placeholder="Nama Lengkap" required style="flex: 2; min-width: 150px; padding: 8px;">
+                        <select name="gender" style="padding: 8px;">
+                            <option value="L">L</option>
+                            <option value="P">P</option>
+                        </select>
+                        <input type="text" name="keterangan" placeholder="Level/Kelas" style="flex: 1; min-width: 100px; padding: 8px;">
+                        <button type="submit" style="background: #1A5B9C; color: white; border: none; padding: 8px 15px; cursor: pointer; border-radius: 4px;">Tambah</button>
                     </form>
                 </div>
 
