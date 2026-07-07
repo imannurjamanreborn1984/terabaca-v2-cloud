@@ -187,7 +187,9 @@ app.post('/portal/upload-excel-massal/:idOrder', upload.single('file_excel'), as
         const sheetName = workbook.SheetNames[0]; 
         const sheet = workbook.Sheets[sheetName];
         const dataExcel = xlsx.utils.sheet_to_json(sheet, { header: 1 });
-        
+        console.log("ISI DATA EXCEL YANG DIBACA:");
+console.log(dataExcel);
+
         const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
         
         if (order && dataExcel.length > 0) {
