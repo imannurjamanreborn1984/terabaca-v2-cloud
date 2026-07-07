@@ -523,24 +523,24 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
 app.get('/internal/lihat-siswa/:id', pastikanInternal, async (req, res) => {
     const idOrder = req.params.id;
     const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
-    if(!order) return res.send("Data tidak ditemukan."); 
     
-    let daftarAnakHtml = ''; 
-    order.data_siswa.forEach((siswa) => { 
-        const isUploaded = siswa.fileScanLokal.startsWith('http');
+    if (!order) return res.send("Data tidak ditemukan.");
+
+    let daftarAnakHtml = '';
+    (order.data_siswa || []).forEach((siswa) => {
+        const fileScan = siswa.fileScanLokal || '';
+        const isUploaded = fileScan.startsWith('http');
+        
         daftarAnakHtml += `
-            <div style="padding:12px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                    <span style="font-weight:600;color:#1e293b;">👤 ${siswa.namaSiswa}</span> 
-                    <span style="font-size:11px; color:#475569;">(${siswa.gender}) [${siswa.keterangan}]</span>
-                    <br><small style="color:#6b7280;">Link Cloud: ${isUploaded ? `<a href="${siswa.fileScanLokal}" target="_blank" style="color:#1A5B9C; font-weight:bold;">📂 Buka File Gambar</a>` : '❌ Menunggu Klien'}</small>
-                </div>
-                <div style="display:flex;gap:10px;align-items:center;">
-                    <span style="font-size:12px;font-weight:bold; color:#7A4B94;">${siswa.statusFormPusat}</span>
-                    ${!isUploaded ? '' : `<a href="/internal/tandai-terkirim/${order.id_order}/${siswa.idSiswa}" style="background-color:#10b981; color:white; padding:4px 8px; border-radius:4px; text-decoration:none; font-size:11px; font-weight:bold;">🔗 Set GForm</a>`}
-                </div>
-            </div>`; 
+            <div>
+                <p>Nama: ${siswa.namaSiswa}</p>
+                <p>Status: ${isUploaded ? 'Sudah Upload' : 'Belum Ada Berkas'}</p>
+            </div>
+        `;
     });
+
+    res.send(daftarAnakHtml);
+});
 
     res.send(`
         <body style="background-color: #F8F9FA; padding: 20px; margin: 0;">
@@ -563,7 +563,7 @@ app.get('/internal/lihat-siswa/:id', pastikanInternal, async (req, res) => {
             </div>
         </body>
     `);
-});
+`})`
 
 // ROUTE INTERNAL PENDUKUNG
 app.get('/internal/tandai-terkirim/:idOrder/:idSiswa', async (req, res) => {
