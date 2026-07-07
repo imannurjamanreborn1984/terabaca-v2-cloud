@@ -2,11 +2,12 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+const xlsx = require('xlsx'); // Tambahan library Excel
 
 const app = express();
 const PORT = process.env.PORT || 3005; 
 
-// Gunakan Memory Storage Multer agar file tidak disimpan di disk lokal Vercel (mencegah Read-Only Error)
+// Gunakan Memory Storage Multer agar file tidak disimpan di disk lokal Vercel
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
@@ -16,14 +17,14 @@ app.use(express.static('./'));
 // ====================================================================
 // KONEKSI UTAMA KE SUPABASE CLOUD 
 // ====================================================================
-const SUPABASE_URL = "https://cawrwgieawcrqhvthqbn.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_cJmrFCKBOIV7s6w4aUAasQ_grQlSL9F";
+const SUPABASE_URL = ".....";
+const SUPABASE_ANON_KEY = "....";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const KUNCI_RAHASIA_KABAG = "kabagterabaca";
 const KUNCI_RAHASIA_ADMIN = "adminterabaca";
 
-// Data Master Paket Statis Sesuai Request
+// Data Master Paket Statis
 const hargaPaketMaster = {
     basic:  { nama: "Paket Basic", personal: 350000, lembaga: 175000 },
     parent: { nama: "Paket Parent", personal: 350000, lembaga: 175000 },
@@ -37,6 +38,7 @@ function pastikanInternal(req, res, next) {
     if (sessionSandiBenar === true) { next(); } 
     else {
         res.send(`
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <div style="font-family:'Segoe UI', sans-serif; text-align:center; padding-top:100px; max-width:500px; margin:0 auto; background-color: #F8F9FA; min-height: 100vh;">
                 <h1 style="color:#C73238; font-size:42px; margin-bottom:10px;">🔒 AKSES DITOLAK</h1>
                 <p style="color:#4b5563;">Halaman dapur internal TERABACA ini dilindungi sandi khusus rahasia pengurus.</p>
@@ -64,30 +66,24 @@ async function uploadKeSupabaseStorage(file, prefix = 'file') {
         return 'error_upload.png';
     }
     
-    // Ambil Link URL Publik Gambar di Supabase Cloud
     const { data: linkPublik } = supabase.storage.from('terabaca-files').getPublicUrl(namaFileUnik);
     return linkPublik.publicUrl;
 }
 
-// 1. HALAMAN UTAMA / PORTAL UTAMA
-// 1. HALAMAN UTAMA / PORTAL UTAMA
+// 1. HALAMAN UTAMA / PORTAL UTAMA (Responsif)
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
         <html lang="id">
         <head>
             <meta charset="UTF-8">
-            <!-- MANTRA UNTUK TAMPILAN HP 👇 -->
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Portal Terabaca</title>
             <style>
-                /* Mengatur agar form dan tombol responsif di layar kecil */
                 .grup-tombol { display: flex; gap: 10px; flex-wrap: wrap; }
                 .tombol-daftar { flex: 1 1 100%; text-align: center; padding: 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; color: white; box-sizing: border-box; }
                 .grup-form-klien { display: flex; gap: 10px; flex-wrap: wrap; }
                 .input-klien { flex: 1 1 100%; }
-                
-                /* Jika layar lebih lebar dari 600px (Laptop/Tablet), kembalikan ke bentuk menyamping */
                 @media (min-width: 600px) {
                     .tombol-daftar { flex: 1; }
                     .input-klien { flex: 1; }
@@ -130,9 +126,8 @@ app.get('/', (req, res) => {
     `);
 });
 
-// ROUTE POST: SINKRONISASI DATABASE BARU KE SUPABASE POSTGRESQL
+// ROUTE POST: SINKRONISASI DATABASE BARU
 app.post('/proses-pendaftaran', upload.single('bukti_bayar'), async (req, res) => {
-    // 1. Menangkap semua input dari form
     const { jenis_pendaftar, kategori, nama_klien, kode_paket, jumlah_testee, kontak, tgl_pelaksanaan, tgl_saji, 
             ttl, anak_ke, dari_bersaudara, nama_lembaga, nama_cabang, level, jurusan } = req.body;
     
@@ -149,93 +144,86 @@ app.post('/proses-pendaftaran', upload.single('bukti_bayar'), async (req, res) =
 
     const idOrderBaru = 'TRBC-' + Math.floor(Math.random() * 9000 + 1000);
 
-    // 2. Simpan ke database
     const { error } = await supabase.from('orders').insert([{
-        id_order: idOrderBaru,
-        kategori: kategori,
-        nama_klien: nama_klien,
-        nama_paket: infoPaketTerpilih.nama,
-        jumlah_testee: parseInt(jumlah_testee || 1),
-        kontak: kontak,
-        harga_satuan: hargaSatuan,
-        total_tagihan: totalTagihan,
-        tgl_pelaksanaan: tgl_pelaksanaan,
-        tgl_saji: tgl_saji || 'Menyesuaikan',
-        bukti_bayar_file: linkBuktiBayarCloud,
-        data_siswa: listNamaAnak,
-        // Data Baru:
-        ttl: ttl || '-',
-        anak_ke: parseInt(anak_ke || 0),
-        jumlah_bersaudara: parseInt(dari_bersaudara || 0),
-        nama_lembaga: nama_lembaga || '-',
-        nama_cabang: nama_cabang || '-',
-        level_kelas: level || '-',
-        jurusan: jurusan || '-'
+        id_order: idOrderBaru, kategori: kategori, nama_klien: nama_klien, nama_paket: infoPaketTerpilih.nama,
+        jumlah_testee: parseInt(jumlah_testee || 1), kontak: kontak, harga_satuan: hargaSatuan, total_tagihan: totalTagihan,
+        tgl_pelaksanaan: tgl_pelaksanaan, tgl_saji: tgl_saji || 'Menyesuaikan', bukti_bayar_file: linkBuktiBayarCloud,
+        data_siswa: listNamaAnak, ttl: ttl || '-', anak_ke: parseInt(anak_ke || 0), jumlah_bersaudara: parseInt(dari_bersaudara || 0),
+        nama_lembaga: nama_lembaga || '-', nama_cabang: nama_cabang || '-', level_kelas: level || '-', jurusan: jurusan || '-'
     }]);
 
     if(error) return res.status(500).send("Database Supabase Gagal Menyimpan: " + error.message);
 
-    res.send(`<div style="font-family:'Segoe UI', sans-serif; text-align:center; padding:50px;"><h2 style="color:#7A4B94;">Sukses!</h2><p>Pendaftaran berhasil disimpan. ID Order: <b>${idOrderBaru}</b></p><a href="/" style="color:#1A5B9C; font-weight:bold;">Kembali ke Beranda</a></div>`);
+    res.send(`<meta name="viewport" content="width=device-width, initial-scale=1.0"><div style="font-family:'Segoe UI', sans-serif; text-align:center; padding:50px;"><h2 style="color:#7A4B94;">Sukses!</h2><p>Pendaftaran berhasil disimpan. ID Order: <b>${idOrderBaru}</b></p><a href="/" style="color:#1A5B9C; font-weight:bold;">Kembali ke Beranda</a></div>`);
 });
 
-
-// ROUTE POST: CEK AKSES MASUK KLIEN LEWAT ID ORDER DI SUPABASE
 app.post('/portal/cek-akses-klien', async (req, res) => {
     const { id_order_input } = req.body;
     const { data: order, error } = await supabase.from('orders').select('*').eq('id_order', id_order_input.trim().toUpperCase()).single();
-    
     if (order) { res.redirect(`/portal/workspace-klien/${order.id_order}`); } 
     else { res.send(`<script>alert("ID Order tidak valid atau tidak terdaftar!"); window.location.href = "/";</script>`); }
 });
 
-// ROUTE POST: PARSING PASTE MASSAL EXCEL/SPREADSHEET MULTI-KOLOM KE SUPABASE
-app.post('/portal/update-nama-massal/:idOrder', async (req, res) => {
+// UPLOAD EXCEL (.XLSX) MASSAL
+app.post('/portal/upload-excel-massal/:idOrder', upload.single('file_excel'), async (req, res) => {
     const idOrder = req.params.idOrder;
-    const { list_nama_textarea, asal_halaman } = req.body;
+    const { asal_halaman } = req.body;
     
-    const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
-    
-    if (order && list_nama_textarea) {
-        const barisSiswa = list_nama_textarea.split('\n').map(b => b.trim()).filter(b => b !== "");
-        let listSiswaUpdate = order.data_siswa;
+    if (!req.file) return res.send(`<script>alert("File Excel tidak ditemukan!"); window.history.back();</script>`);
 
-        listSiswaUpdate.forEach((siswa, index) => {
-            if (barisSiswa[index]) {
-                const kolomData = barisSiswa[index].split('\t');
-                siswa.namaSiswa = kolomData[0] ? kolomData[0].trim() : siswa.namaSiswa;
-                siswa.gender    = kolomData[1] ? kolomData[1].trim() : '-';
-                siswa.keterangan  = kolomData[2] ? kolomData[2].trim() : '-';
+    try {
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0]; 
+        const sheet = workbook.Sheets[sheetName];
+        const dataExcel = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+        
+        const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
+        
+        if (order && dataExcel.length > 0) {
+            let listSiswaUpdate = order.data_siswa;
+            let startIndex = 0;
+            if (dataExcel[0] && typeof dataExcel[0][0] === 'string' && dataExcel[0][0].toLowerCase().includes('nama')) {
+                startIndex = 1;
             }
-        });
 
-        // Update struktur data_siswa JSONB di cloud database
-        await supabase.from('orders').update({ data_siswa: listSiswaUpdate }).eq('id_order', idOrder);
+            let excelRowIndex = startIndex;
+            for (let i = 0; i < listSiswaUpdate.length; i++) {
+                if (dataExcel[excelRowIndex]) {
+                    const barisData = dataExcel[excelRowIndex];
+                    listSiswaUpdate[i].namaSiswa = barisData[0] ? String(barisData[0]).trim() : listSiswaUpdate[i].namaSiswa;
+                    listSiswaUpdate[i].gender    = barisData[1] ? String(barisData[1]).trim() : '-';
+                    listSiswaUpdate[i].keterangan = barisData[2] ? String(barisData[2]).trim() : '-';
+                }
+                excelRowIndex++;
+            }
+            await supabase.from('orders').update({ data_siswa: listSiswaUpdate }).eq('id_order', idOrder);
+        }
+        
+        if(asal_halaman === 'internal') { res.redirect(`/internal/lihat-siswa/${idOrder}`); } 
+        else { res.redirect(`/portal/workspace-klien/${idOrder}`); }
+        
+    } catch (error) {
+        console.error("Gagal membaca Excel:", error);
+        res.send(`<script>alert("Gagal membaca file Excel. Pastikan formatnya .xlsx atau .xls!"); window.history.back();</script>`);
     }
-    
-    if(asal_halaman === 'internal') { res.redirect(`/internal/lihat-siswa/${idOrder}`); } 
-    else { res.redirect(`/portal/workspace-klien/${idOrder}`); }
 });
 
-// ROUTE POST: PROSES UPLOAD MANDIRI GAMBAR SISWA LANGSUNG TERBANG KE STORAGE BUCKET
 app.post('/portal/upload-mandiri-siswa/:idOrder/:idSiswa', upload.single('dokumen_testee'), async (req, res) => {
     const { idOrder, idSiswa } = req.params;
     const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
-    
     if (order && req.file) {
         let listSiswaUpdate = order.data_siswa;
         const siswa = listSiswaUpdate.find(s => s.idSiswa == idSiswa);
-        
         if (siswa) {
             const linkBerkasCloud = await uploadKeSupabaseStorage(req.file, `testee-${idOrder}`);
-            siswa.fileScanLokal = linkBerkasCloud; // Menyimpan alamat link Supabase publik online-nya
+            siswa.fileScanLokal = linkBerkasCloud;
         }
         await supabase.from('orders').update({ data_siswa: listSiswaUpdate }).eq('id_order', idOrder);
     }
     res.redirect(`/portal/workspace-klien/${idOrder}`);
 });
 
-// WORKSPACE KLIEN PUBLIK
-// WORKSPACE KLIEN PUBLIK
+// WORKSPACE KLIEN
 app.get('/portal/workspace-klien/:id', async (req, res) => {
     const idOrder = req.params.id;
     const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
@@ -271,7 +259,6 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
                 .kepala-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
                 @media (min-width: 600px) {
                     .kepala-header a { flex: unset; }
-                    /* Form upload menyamping di Laptop */
                     div[style*="flex-direction:column; gap:12px;"] { flex-direction: row !important; justify-content: space-between !important; align-items: center !important; }
                     form[style*="flex-wrap:wrap;"] button { flex: unset !important; }
                 }
@@ -289,20 +276,15 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
                 <hr style="border:0; border-top:1px solid #e5e7eb; margin:15px 0;">
                 
                 <div style="background-color: #f0f7ff; padding: 15px; border-radius: 6px; margin-bottom: 25px; border: 1px solid #bae6fd;">
-                    <b style="color: #1A5B9C; font-size: 14px; display:block; margin-bottom:8px;">📋 Sinkronisasi Massal via Template Spreadsheet</b>
-                    <p style="margin: 0 0 10px 0; font-size: 13px; color: #4b5563;">Susun data di Excel menjadi 3 kolom: <b>[Nama Lengkap]</b>, <b>[L/P]</b>, <b>[Kelas/Identitas]</b>. Blok & Copy semua baris siswa Anda, lalu paste ke kotak di bawah:</p>
-                    
-                    <div class="tabel-scroll">
-                        <table style="font-size:12px; color:#475569; border-collapse:collapse; background:#fff; width:100%; min-width:350px; border:1px solid #cbd5e1;">
-                            <tr style="background:#e2e8f0; font-weight:bold;"><td style="padding:6px; border:1px solid #cbd5e1;">Kolom A (Nama)</td><td style="padding:6px; border:1px solid #cbd5e1;">B (L/P)</td><td style="padding:6px; border:1px solid #cbd5e1;">C (Kelas/Identitas)</td></tr>
-                            <tr><td style="padding:6px; border:1px solid #cbd5e1; font-style:italic;">Ahmad Junaedi</td><td style="padding:6px; border:1px solid #cbd5e1; font-style:italic;">L</td><td style="padding:6px; border:1px solid #cbd5e1; font-style:italic;">Kelas B1 PAUD</td></tr>
-                        </table>
-                    </div>
+                    <b style="color: #1A5B9C; font-size: 14px; display:block; margin-bottom:10px;">📋 Sinkronisasi Massal via Template Excel (.xlsx)</b>
+                    <p style="margin: 0 0 5px 0; font-size: 13px; color: #4b5563;"><b>1.</b> Unduh template kosong di sini: <a href="/template-siswa.xlsx" download style="color:#7A4B94; font-weight:bold; text-decoration:underline;">📥 Download Template .xlsx</a></p>
+                    <p style="margin: 0 0 5px 0; font-size: 13px; color: #4b5563;"><b>2.</b> Isi data siswa Anda pada template tersebut.</p>
+                    <p style="margin: 0 0 15px 0; font-size: 13px; color: #4b5563;"><b>3.</b> Upload file yang sudah diisi ke kotak di bawah ini:</p>
 
-                    <form action="/portal/update-nama-massal/${order.id_order}" method="POST">
+                    <form action="/portal/upload-excel-massal/${order.id_order}" method="POST" enctype="multipart/form-data" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:white; padding:15px; border-radius:6px; border:1px dashed #cbd5e1;">
                         <input type="hidden" name="asal_halaman" value="klien">
-                        <textarea name="list_nama_textarea" rows="4" placeholder="Tempel blok kolom spreadsheet Anda di sini..." required style="width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:6px; font-family:monospace; box-sizing:border-box; font-size:13px; resize:vertical; background:#fff;"></textarea>
-                        <button type="submit" style="margin-top:10px; background-color:#45A6D9; color:white; border:none; padding:12px 15px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px; width:100%;">⚡ Sinkronisasi Data Spreadsheet</button>
+                        <input type="file" name="file_excel" accept=".xlsx, .xls" required style="flex:1 1 200px; font-size:13px; border:1px solid #e5e7eb; padding:8px; border-radius:4px; cursor:pointer;">
+                        <button type="submit" style="background-color:#45A6D9; color:white; border:none; padding:10px 15px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px; flex:1 1 150px;">⚡ Upload & Sinkronisasi</button>
                     </form>
                 </div>
 
@@ -313,12 +295,11 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
     `);
 });
 
-// INVOICE NOTA RESMI
+// INVOICE NOTA RESMI + PRINT PDF
 app.get('/portal/invoice/:id', async (req, res) => {
     const idOrder = req.params.id;
     const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
     const { data: settingBank } = await supabase.from('settings').select('value').eq('key', 'info_rekening').single();
-    
     if (!order) return res.send("Invoice tidak ditemukan.");
     const infoBank = settingBank.value;
 
@@ -330,58 +311,32 @@ app.get('/portal/invoice/:id', async (req, res) => {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Invoice - ${order.id_order}</title>
             <style>
-                /* CSS Khusus saat dicetak/Save as PDF: Menyembunyikan tombol & mereset margin */
                 @media print {
                     .area-tombol-print { display: none !important; }
                     body { background-color: #ffffff !important; padding: 0 !important; margin: 0 !important; }
-                    .kotak-invoice { 
-                        box-shadow: none !important; 
-                        border: none !important; 
-                        padding: 0 !important; 
-                        margin: 0 !important;
-                        max-width: 100% !important;
-                    }
+                    .kotak-invoice { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
                 }
             </style>
         </head>
         <body style="background-color: #F8F9FA; padding: 20px; margin: 0;">
-            
-            <!-- Area Tombol Aksi (Akan hilang saat di-print) -->
             <div class="area-tombol-print" style="max-width: 650px; margin: 0 auto 15px auto; text-align: right;">
-                <button onclick="window.print()" style="background-color: #1A5B9C; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    🖨️ Cetak / Simpan PDF
-                </button>
-                <button onclick="window.close()" style="background-color: #e5e7eb; color: #4b5563; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; margin-left: 10px;">
-                    Tutup Halaman
-                </button>
+                <button onclick="window.print()" style="background-color: #1A5B9C; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🖨️ Cetak / Simpan PDF</button>
+                <button onclick="window.close()" style="background-color: #e5e7eb; color: #4b5563; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; margin-left: 10px;">Tutup Halaman</button>
             </div>
-
-            <!-- Konten Invoice Utama -->
             <div class="kotak-invoice" style="font-family:'Segoe UI',sans-serif;max-width:650px;margin:0 auto;padding:40px;border:1px solid #cbd5e1;border-radius:4px;background:#fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                 <div style="display:flex;justify-content:space-between;border-bottom:3px solid #7A4B94;padding-bottom:15px;">
-                    <div>
-                        <h2 style="color:#7A4B94;margin:0 0 5px 0;">TERABACA Kab. Tasikmalaya</h2>
-                        <p style="margin:0;font-size:12px;font-style:italic;">"Nalungtik Titik Manggih Diri"</p>
-                    </div>
-                    <div style="text-align:right;">
-                        <h3 style="margin:0 0 5px 0; color:#4b5563;">INVOICE</h3>
-                        <p style="margin:0; font-size:12px; color:#6b7280;">ID Order: <b>${order.id_order}</b></p>
-                    </div>
+                    <div><h2 style="color:#7A4B94;margin:0 0 5px 0;">TERABACA Kab. Tasikmalaya</h2><p style="margin:0;font-size:12px;font-style:italic;">"Nalungtik Titik Manggih Diri"</p></div>
+                    <div style="text-align:right;"><h3 style="margin:0 0 5px 0; color:#4b5563;">INVOICE</h3><p style="margin:0; font-size:12px; color:#6b7280;">ID Order: <b>${order.id_order}</b></p></div>
                 </div>
-                
                 <div style="margin-top: 20px; font-size: 13px;">
                     <p style="margin:0 0 5px 0; color:#6b7280;">Ditagihkan Kepada:</p>
                     <p style="margin:0; font-weight:bold; font-size:15px; color:#1e293b;">${order.nama_klien}</p>
                     <p style="margin:0; color:#4b5563;">Kontak WhatsApp: ${order.kontak}</p>
                 </div>
-
                 <table style="width:100%;margin-top:25px;font-size:13px; border-collapse: collapse;">
                     <thead>
                         <tr style="background:#faf5ff;text-align:left; color:#7A4B94; border-bottom: 2px solid #e9d5ff;">
-                            <th style="padding:10px;">Paket</th>
-                            <th style="padding:10px;text-align:center;">Kuota</th>
-                            <th style="padding:10px;text-align:right;">Satuan</th>
-                            <th style="padding:10px;text-align:right;">Total Tagihan</th>
+                            <th style="padding:10px;">Paket</th><th style="padding:10px;text-align:center;">Kuota</th><th style="padding:10px;text-align:right;">Satuan</th><th style="padding:10px;text-align:right;">Total Tagihan</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -393,16 +348,11 @@ app.get('/portal/invoice/:id', async (req, res) => {
                         </tr>
                     </tbody>
                 </table>
-                
                 <div style="margin-top:30px; background-color:#f0f7ff; padding: 15px; border-left: 4px solid #1A5B9C; border-radius: 4px;">
                     <p style="margin:0; font-weight:bold; color:#1A5B9C; font-size:13px; margin-bottom:5px;">Informasi Pembayaran (Transfer Bank):</p>
                     <p style="margin:0; font-size:14px; color:#334155;">Bank <b>${infoBank.bank}</b></p>
                     <p style="margin:0; font-size:16px; font-weight:bold; letter-spacing:1px; color:#0f172a;">${infoBank.nomorRekening}</p>
                     <p style="margin:0; font-size:13px; color:#475569;">a.n. ${infoBank.atasNama}</p>
-                </div>
-                
-                <div style="margin-top: 40px; text-align: center; color:#9ca3af; font-size: 11px;">
-                    <p>Dokumen ini dibuat secara otomatis oleh Sistem Terabaca dan sah tanpa tanda tangan basah.</p>
                 </div>
             </div>
         </body>
@@ -410,9 +360,7 @@ app.get('/portal/invoice/:id', async (req, res) => {
     `);
 });
 
-// ROUTE MENU FORM REGISTRASI
-// ROUTE MENU FORM REGISTRASI (Sekolah)
-// ROUTE MENU FORM REGISTRASI (Sekolah)
+// MENU FORM REGISTRASI (Sekolah)
 app.get('/portal/sekolah-:tipe', (req, res) => {
     const tipeSekolah = req.params.tipe;
     res.send(`
@@ -425,43 +373,20 @@ app.get('/portal/sekolah-:tipe', (req, res) => {
     </head>
     <body style="background-color: #F8F9FA; padding: 15px; margin: 0;">
         <div style="font-family:'Segoe UI',sans-serif;max-width:600px;margin:10px auto;padding:20px;border:1px solid #e5e7eb;border-radius:8px; background-color: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-            <!-- Sisa kode form sekolah sama seperti sebelumnya... -->
             <h3 style="color: #7A4B94; margin-top:0;">Form Lembaga (${tipeSekolah.toUpperCase()})</h3>
             <form action="/proses-pendaftaran" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="jenis_pendaftar" value="lembaga">
                 <input type="hidden" name="kategori" value="Lembaga (${tipeSekolah})">
-                
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Lembaga/Sekolah:</label>
-                <input type="text" name="nama_lembaga" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Cabang:</label>
-                <input type="text" name="nama_cabang" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Lembaga/Sekolah:</label><input type="text" name="nama_lembaga" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Cabang:</label><input type="text" name="nama_cabang" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                 <label style="font-size:14px; color:#4b5563; font-weight:bold;">Pilih Paket:</label>
-                <select name="kode_paket" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                    <option value="basic">Basic</option>
-                    <option value="parent">Parent</option>
-                    <option value="talent">Talent</option>
-                </select>
-                
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Jumlah Testee:</label>
-                <input type="number" name="jumlah_testee" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Level/Kelas:</label>
-                <input type="text" name="level" placeholder="Misal: Kelas 5" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Jurusan (Khusus Talent):</label>
-                <input type="text" name="jurusan" placeholder="Misal: IPA" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">WhatsApp:</label>
-                <input type="text" name="kontak" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Tanggal Pelaksanaan Tes:</label>
-                <input type="date" name="tgl_pelaksanaan" required style="width:100%;padding:12px;margin-bottom:20px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                
-                <label style="font-size:14px; color:#4b5563; font-weight:bold; display:block;">Bukti DP Pembayaran:</label>
-                <input type="file" name="bukti_bayar" required style="margin-bottom: 20px; width:100%;"><br>
-                
+                <select name="kode_paket" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;"><option value="basic">Basic</option><option value="parent">Parent</option><option value="talent">Talent</option></select>
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Jumlah Testee:</label><input type="number" name="jumlah_testee" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Level/Kelas:</label><input type="text" name="level" placeholder="Misal: Kelas 5" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Jurusan (Khusus Talent):</label><input type="text" name="jurusan" placeholder="Misal: IPA" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">WhatsApp:</label><input type="text" name="kontak" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Tanggal Pelaksanaan Tes:</label><input type="date" name="tgl_pelaksanaan" required style="width:100%;padding:12px;margin-bottom:20px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <label style="font-size:14px; color:#4b5563; font-weight:bold; display:block;">Bukti DP Pembayaran:</label><input type="file" name="bukti_bayar" required style="margin-bottom: 20px; width:100%;"><br>
                 <button type="submit" style="width:100%;padding:14px;background:#7A4B94;color:#fff;border:none; border-radius:6px; font-weight:bold; font-size:15px; cursor:pointer;">Kirim Pendaftaran</button>
             </form>
         </div>
@@ -469,7 +394,6 @@ app.get('/portal/sekolah-:tipe', (req, res) => {
     </html>`);
 });
 
-// LOGIN INTERNAL
 // LOGIN INTERNAL
 app.get('/internal/login-page', (req, res) => {
     const errorMsg = req.query.error ? `<p style="color:#C73238; font-size:13px; font-weight:bold;">❌ Kata sandi salah!</p>` : '';
@@ -500,23 +424,20 @@ app.post('/internal/proses-verifikasi', (req, res) => {
 });
 app.get('/internal/logout', (req, res) => { sessionSandiBenar = false; res.redirect('/'); });
 
-// DASHBOARD UTAMA MANAJEMEN INTERNAL (DITARIK DARI CLOUD SUPABASE)
+// DASHBOARD UTAMA MANAJEMEN INTERNAL
 app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
     const { data: listOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
     const { data: settingPraktisi } = await supabase.from('settings').select('value').eq('key', 'daftar_praktisi').single();
-    
     const daftarPraktisi = (settingPraktisi && settingPraktisi.value) ? settingPraktisi.value : [];
     let barisTabel = '';
     
     (listOrders || []).forEach((order) => {
         let opsiPraktisiLap = `<option value="">-- Pilih Praktisi Lap --</option>`; 
         let opsiPraktisiSaji = `<option value="">-- Pilih Praktisi Saji --</option>`;
-        
         daftarPraktisi.forEach(p => { 
             opsiPraktisiLap += `<option value="${p}" ${order.praktisi_lapangan === p ? 'selected' : ''}>${p}</option>`; 
             opsiPraktisiSaji += `<option value="${p}" ${order.praktisi_saji === p ? 'selected' : ''}>${p}</option>`; 
         });
-        
         const berkasSiap = (order.data_siswa && Array.isArray(order.data_siswa)) ? order.data_siswa.filter(s => s.fileScanLokal && s.fileScanLokal.startsWith('http')).length : 0;
         
         barisTabel += `<tr style="border-bottom:1px solid #e5e7eb;font-size:13px; background-color:white;">
@@ -530,10 +451,9 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
         </tr>`;
     });
 
-    res.send(`<body style="background-color: #F8F9FA; margin:0;"><div style="font-family:'Segoe UI',sans-serif;padding:25px; max-width: 1200px; margin: 0 auto;"><div style="display:flex;justify-content:space-between;align-items:center;"><h2><span style="color:#7A4B94;">📊 Dashboard Cloud</span> Kantor Cabang Tasikmalaya</h2><div style="display:flex; gap:10px;"><a href="/internal/pengaturan" style="background-color:#1A5B9C;color:white;padding:8px 15px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:bold;">⚙ Pengaturan Sistem</a><a href="/internal/logout" style="background-color:#C73238;color:white;padding:8px 15px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:bold;">🔒 Logout</a></div></div><table style="width:100%;border-collapse:collapse;margin-top:20px;border:1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);"><thead><tr style="background-color:#7A4B94;color:white;text-align:left;font-size:13px;"><th style="padding:12px;">ID</th><th style="padding:12px;">Nama Klien</th><th style="padding:12px;text-align:center;">Testee</th><th style="padding:12px;">Keuangan</th><th style="padding:12px;">Plotting Tim</th><th style="padding:12px;">Status Tim</th><th style="padding:12px;text-align:center;">Setoran Pusat</th></tr></thead><tbody>${barisTabel || '<tr><td colspan="7" style="text-align:center;padding:30px;color:#9ca3af; background-color:white;">Belum ada data pendaftaran di Supabase cloud.</td></tr>'}</tbody></table></div></body>`);
+    res.send(`<body style="background-color: #F8F9FA; margin:0;"><div style="font-family:'Segoe UI',sans-serif;padding:25px; max-width: 1200px; margin: 0 auto;"><div style="display:flex;justify-content:space-between;align-items:center;"><h2><span style="color:#7A4B94;">📊 Dashboard Cloud</span> Kantor Cabang Tasikmalaya</h2><div style="display:flex; gap:10px;"><a href="/internal/pengaturan" style="background-color:#1A5B9C;color:white;padding:8px 15px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:bold;">⚙ Pengaturan Sistem</a><a href="/internal/logout" style="background-color:#C73238;color:white;padding:8px 15px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:bold;">🔒 Logout</a></div></div><div style="overflow-x:auto;"><table style="width:100%; min-width:800px; border-collapse:collapse;margin-top:20px;border:1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);"><thead><tr style="background-color:#7A4B94;color:white;text-align:left;font-size:13px;"><th style="padding:12px;">ID</th><th style="padding:12px;">Nama Klien</th><th style="padding:12px;text-align:center;">Testee</th><th style="padding:12px;">Keuangan</th><th style="padding:12px;">Plotting Tim</th><th style="padding:12px;">Status Tim</th><th style="padding:12px;text-align:center;">Setoran Pusat</th></tr></thead><tbody>${barisTabel || '<tr><td colspan="7" style="text-align:center;padding:30px;color:#9ca3af; background-color:white;">Belum ada data pendaftaran di Supabase cloud.</td></tr>'}</tbody></table></div></div></body>`);
 });
 
-// DETAIL BERKAS SISWA DI DASHBOARD INTERNAL
 app.get('/internal/lihat-siswa/:id', pastikanInternal, async (req, res) => {
     const idOrder = req.params.id;
     const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
@@ -565,11 +485,11 @@ app.get('/internal/lihat-siswa/:id', pastikanInternal, async (req, res) => {
                 <hr style="border:0; border-top:1px solid #e5e7eb; margin:15px 0;">
                 
                 <div style="background-color: #faf5ff; padding: 15px; border-radius: 6px; margin-bottom: 25px; border: 1px solid #e9d5ff;">
-                    <b style="color: #7A4B94; font-size: 14px; display:block; margin-bottom:3px;">📋 Tempel Excel Multi-Kolom (Tim Internal)</b>
-                    <form action="/portal/update-nama-massal/${order.id_order}" method="POST">
+                    <b style="color: #7A4B94; font-size: 14px; display:block; margin-bottom:10px;">📋 Upload Excel Massal (Tim Internal)</b>
+                    <form action="/portal/upload-excel-massal/${order.id_order}" method="POST" enctype="multipart/form-data" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
                         <input type="hidden" name="asal_halaman" value="internal">
-                        <textarea name="list_nama_textarea" rows="4" placeholder="Tempel kolom Excel di sini..." required style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-family:sans-serif; box-sizing:border-box; font-size:13px;"></textarea>
-                        <button type="submit" style="margin-top:8px; background-color:#7A4B94; color:white; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px;">Simpan Perubahan</button>
+                        <input type="file" name="file_excel" accept=".xlsx, .xls" required style="flex:1 1 200px; font-size:13px; border:1px solid #cbd5e1; padding:8px; border-radius:4px; background:#fff;">
+                        <button type="submit" style="background-color:#7A4B94; color:white; border:none; padding:10px 15px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:13px; flex:1 1 150px;">Simpan Data Excel</button>
                     </form>
                 </div>
 
@@ -579,7 +499,7 @@ app.get('/internal/lihat-siswa/:id', pastikanInternal, async (req, res) => {
     `);
 });
 
-// ROUTE INTERNAL PENDUKUNG (UPDATE DATA KE SUPABASE CLOUD)
+// ROUTE INTERNAL PENDUKUNG
 app.get('/internal/tandai-terkirim/:idOrder/:idSiswa', async (req, res) => {
     const { idOrder, idSiswa } = req.params;
     const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
@@ -591,28 +511,21 @@ app.get('/internal/tandai-terkirim/:idOrder/:idSiswa', async (req, res) => {
     }
     res.redirect(`/internal/lihat-siswa/${idOrder}`);
 });
-
 app.get('/internal/lunaskan/:id', async (req, res) => {
     await supabase.from('orders').update({ status_pembayaran: 'Lunas' }).eq('id_order', req.params.id);
     res.redirect('/internal/dashboard');
 });
-
 app.post('/internal/plot-tim/:id', async (req, res) => {
-    await supabase.from('orders').update({
-        praktisi_lapangan: req.body.praktisi_lapangan,
-        praktisi_saji: req.body.praktisi_saji
-    }).eq('id_order', req.params.id);
+    await supabase.from('orders').update({ praktisi_lapangan: req.body.praktisi_lapangan, praktisi_saji: req.body.praktisi_saji }).eq('id_order', req.params.id);
     res.redirect('/internal/dashboard');
 });
 
-// ROUTE INTERNAL PENGATURAN (SINKRONISASI SETTINGS DI SUPABASE)
+// ROUTE PENGATURAN
 app.get('/internal/pengaturan', pastikanInternal, async (req, res) => {
     const { data: resBank } = await supabase.from('settings').select('value').eq('key', 'info_rekening').single();
     const { data: resPraktisi } = await supabase.from('settings').select('value').eq('key', 'daftar_praktisi').single();
-    
     const infoBank = resBank.value;
     const daftarPraktisi = resPraktisi.value;
-
     res.send(`
         <body style="background-color: #F8F9FA; padding: 20px; margin: 0;">
             <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 20px auto; padding: 30px; border: 1px solid #e5e7eb; border-radius: 8px; background:white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
@@ -620,31 +533,20 @@ app.get('/internal/pengaturan', pastikanInternal, async (req, res) => {
                 <h3 style="color:#7A4B94;">⚙ Panel Pengaturan Kantor Cabang (Cloud)</h3>
                 <hr style="border:0; border-top:1px solid #e5e7eb; margin:15px 0;">
                 <form action="/internal/simpan-pengaturan" method="POST">
-                    <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Bank:</label>
-                    <input type="text" name="bank" value="${infoBank.bank}" required style="width:100%; padding:10px; margin-bottom:15px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
-                    
-                    <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nomor Rekening:</label>
-                    <input type="text" name="nomor_rekening" value="${infoBank.nomorRekening}" required style="width:100%; padding:10px; margin-bottom:15px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
-                    
-                    <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Pemilik Rekening:</label>
-                    <input type="text" name="atas_nama" value="${infoBank.atasNama}" required style="width:100%; padding:10px; margin-bottom:25px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
-                    
-                    <label style="font-size:14px; color:#4b5563; font-weight:bold;">Tambah Anggota Praktisi Lapangan Baru:</label>
-                    <input type="text" name="praktisi_baru" placeholder="Ketik nama praktisi..." style="width:100%; padding:10px; margin-bottom:5px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
+                    <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Bank:</label><input type="text" name="bank" value="${infoBank.bank}" required style="width:100%; padding:10px; margin-bottom:15px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
+                    <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nomor Rekening:</label><input type="text" name="nomor_rekening" value="${infoBank.nomorRekening}" required style="width:100%; padding:10px; margin-bottom:15px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
+                    <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Pemilik Rekening:</label><input type="text" name="atas_nama" value="${infoBank.atasNama}" required style="width:100%; padding:10px; margin-bottom:25px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
+                    <label style="font-size:14px; color:#4b5563; font-weight:bold;">Tambah Anggota Praktisi Lapangan Baru:</label><input type="text" name="praktisi_baru" placeholder="Ketik nama praktisi..." style="width:100%; padding:10px; margin-bottom:5px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
                     <small style="color:#6b7280; display:block; margin-bottom:20px;">Aktif: <i>${daftarPraktisi.join(', ')}</i></small>
-                    
                     <button type="submit" style="width:100%; padding:12px; background:#1A5B9C; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Simpan ke Supabase Cloud</button>
                 </form>
             </div>
         </body>
     `);
 });
-
 app.post('/internal/simpan-pengaturan', pastikanInternal, async (req, res) => {
     const { bank, nomor_rekening, atas_nama, praktisi_baru } = req.body;
-    
     await supabase.from('settings').update({ value: { bank, nomorRekening: nomor_rekening, atasNama: atas_nama } }).eq('key', 'info_rekening');
-    
     if (praktisi_baru && praktisi_baru.trim() !== "") {
         const { data: resPraktisi } = await supabase.from('settings').select('value').eq('key', 'daftar_praktisi').single();
         let listPraktisi = resPraktisi.value;
@@ -659,32 +561,24 @@ app.get('/internal/upload-pusat/:id', pastikanInternal, (req, res) => { res.send
 app.post('/internal/proses-upload-pusat/:id', pastikanInternal, upload.single('file_setoran'), async (req, res) => {
     if(req.file) {
         const linkStrukCloud = await uploadKeSupabaseStorage(req.file, 'setoran-pusat');
-        await supabase.from('orders').update({
-            file_setoran_pusat_pdf: linkStrukCloud,
-            status_upload_pusat: 'Terupload'
-        }).eq('id_order', req.params.id);
+        await supabase.from('orders').update({ file_setoran_pusat_pdf: linkStrukCloud, status_upload_pusat: 'Terupload' }).eq('id_order', req.params.id);
     }
     res.redirect('/internal/dashboard');
 });
 
-// ROUTE MENU FORM PERSONAL - BARU DITAMBAHKAN
-// ROUTE MENU FORM PERSONAL - BARU DITAMBAHKAN
+// FORM PERSONAL
 app.get('/portal/personal', (req, res) => {
     res.send(`
     <!DOCTYPE html>
     <html lang="id">
     <head>
         <meta charset="UTF-8">
-        <!-- Mantra Viewport untuk HP -->
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Form Personal - Terabaca</title>
         <style>
-            /* CSS agar input bersebelahan otomatis turun ke bawah di HP */
             .grup-input { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
             .input-setengah { flex: 1 1 100%; }
-            @media (min-width: 600px) {
-                .input-setengah { flex: 1; }
-            }
+            @media (min-width: 600px) { .input-setengah { flex: 1; } }
         </style>
     </head>
     <body style="background-color: #F8F9FA; padding: 15px; margin: 0;">
@@ -694,60 +588,31 @@ app.get('/portal/personal', (req, res) => {
                 <input type="hidden" name="jenis_pendaftar" value="personal">
                 <input type="hidden" name="kategori" value="Personal">
                 <input type="hidden" name="jumlah_testee" value="1">
-                
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Lengkap:</label>
-                <input type="text" name="nama_klien" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Tempat, Tanggal Lahir (TTL):</label>
-                <input type="text" name="ttl" placeholder="Contoh: Tasikmalaya, 12 Januari 2010" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Lengkap:</label><input type="text" name="nama_klien" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Tempat, Tanggal Lahir (TTL):</label><input type="text" name="ttl" placeholder="Contoh: Tasikmalaya, 12 Januari 2010" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
                 <div class="grup-input">
-                    <div class="input-setengah">
-                        <label style="font-size:14px; color:#4b5563; font-weight:bold;">Anak ke-:</label>
-                        <input type="number" name="anak_ke" required style="width:100%;padding:12px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; margin-top:5px;">
-                    </div>
-                    <div class="input-setengah">
-                        <label style="font-size:14px; color:#4b5563; font-weight:bold;">Dari (X) Bersaudara:</label>
-                        <input type="number" name="jumlah_bersaudara" required style="width:100%;padding:12px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; margin-top:5px;">
-                    </div>
+                    <div class="input-setengah"><label style="font-size:14px; color:#4b5563; font-weight:bold;">Anak ke-:</label><input type="number" name="anak_ke" required style="width:100%;padding:12px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; margin-top:5px;"></div>
+                    <div class="input-setengah"><label style="font-size:14px; color:#4b5563; font-weight:bold;">Dari (X) Bersaudara:</label><input type="number" name="jumlah_bersaudara" required style="width:100%;padding:12px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; margin-top:5px;"></div>
                 </div>
-
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Cabang:</label>
-                <input type="text" name="nama_cabang" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Pilih Paket:</label>
-                <select name="kode_paket" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                    <option value="basic">Basic</option>
-                    <option value="parent">Parent</option>
-                    <option value="talent">Talent</option>
-                </select>
-                
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Level/Kelas (Opsional):</label>
-                <input type="text" name="level_kelas" placeholder="Misal: Kelas 4 SD" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Jurusan (Jika Paket Talent):</label>
-                <input type="text" name="jurusan" placeholder="Misal: IPA/IPS/Teknik" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">WhatsApp:</label>
-                <input type="text" name="kontak" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                
-                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Tanggal Pelaksanaan Tes:</label>
-                <input type="date" name="tgl_pelaksanaan" required style="width:100%;padding:12px;margin-bottom:20px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-                
-                <label style="font-size:14px; color:#4b5563; font-weight:bold; display:block;">Bukti Pembayaran:</label>
-                <input type="file" name="bukti_bayar" required style="margin-bottom: 20px; width:100%;"><br>
-                
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Cabang:</label><input type="text" name="nama_cabang" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Pilih Paket:</label><select name="kode_paket" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;"><option value="basic">Basic</option><option value="parent">Parent</option><option value="talent">Talent</option></select>
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Level/Kelas (Opsional):</label><input type="text" name="level_kelas" placeholder="Misal: Kelas 4 SD" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Jurusan (Jika Paket Talent):</label><input type="text" name="jurusan" placeholder="Misal: IPA/IPS/Teknik" style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">WhatsApp:</label><input type="text" name="kontak" required style="width:100%;padding:12px;margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <label style="font-size:14px; color:#4b5563; font-weight:bold;">Tanggal Pelaksanaan Tes:</label><input type="date" name="tgl_pelaksanaan" required style="width:100%;padding:12px;margin-bottom:20px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <label style="font-size:14px; color:#4b5563; font-weight:bold; display:block;">Bukti Pembayaran:</label><input type="file" name="bukti_bayar" required style="margin-bottom: 20px; width:100%;"><br>
                 <button type="submit" style="width:100%;padding:14px;background:#7A4B94;color:#fff;border:none; border-radius:6px; font-weight:bold; font-size:15px; cursor:pointer;">Kirim Pendaftaran</button>
             </form>
         </div>
     </body>
     </html>`);
 });
+
 app.listen(PORT, () => {
     console.log(`==================================================`);
     console.log(` Terabaca Cloud Terkoneksi di http://localhost:${PORT}`);
     console.log(`==================================================`);
 });
 
-
+// BARIS WAJIB UNTUK VERCEL 👇
 module.exports = app;
