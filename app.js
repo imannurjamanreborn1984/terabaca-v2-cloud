@@ -521,14 +521,14 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
 });
 
 app.get('/internal/lihat-siswa/:id', pastikanInternal, async (req, res) => {
-    const idOrder = req.params.id; 
+    const idOrder = req.params.id;
     const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
     
     if (!order) return res.send("Data tidak ditemukan.");
 
     let daftarAnakHtml = '';
     
-    // Perulangan untuk membuat daftar siswa (HANYA SATU KALI)
+    // Perulangan untuk membuat daftar siswa
     (order.data_siswa || []).forEach((siswa) => {
         const fileScan = siswa.fileScanLokal || '';
         const isUploaded = fileScan.startsWith('http');
@@ -541,7 +541,7 @@ app.get('/internal/lihat-siswa/:id', pastikanInternal, async (req, res) => {
         `;
     });
 
-    // Kirim satu kali saja dengan template HTML lengkap
+    // Kirim respons HTML lengkap hanya satu kali
     res.send(`
         <!DOCTYPE html>
         <html lang="id">
