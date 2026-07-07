@@ -17,8 +17,8 @@ app.use(express.static('./'));
 // ====================================================================
 // KONEKSI UTAMA KE SUPABASE CLOUD 
 // ====================================================================
-const SUPABASE_URL = ".....";
-const SUPABASE_ANON_KEY = "....";
+const SUPABASE_URL = "https://cawrwgieawcrqhvthqbn.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_cJmrFCKBOIV7s6w4aUAasQ_grQlSL9F";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const KUNCI_RAHASIA_KABAG = "kabagterabaca";
