@@ -175,6 +175,7 @@ app.post('/portal/cek-akses-klien', async (req, res) => {
 });
 
 // UPLOAD EXCEL (.XLSX) MASSAL
+// UPLOAD EXCEL (.XLSX) MASSAL (VERSI TEMPLATE RESMI)
 app.post('/portal/upload-excel-massal/:idOrder', upload.single('file_excel'), async (req, res) => {
     const idOrder = req.params.idOrder;
     const { asal_halaman } = req.body;
@@ -191,18 +192,34 @@ app.post('/portal/upload-excel-massal/:idOrder', upload.single('file_excel'), as
         
         if (order && dataExcel.length > 0) {
             let listSiswaUpdate = order.data_siswa;
+            
+            // 1. Mencari otomatis di baris ke berapa judul "Nama" berada
             let startIndex = 0;
-            if (dataExcel[0] && typeof dataExcel[0][0] === 'string' && dataExcel[0][0].toLowerCase().includes('nama')) {
-                startIndex = 1;
+            for (let j = 0; j < dataExcel.length; j++) {
+                const baris = dataExcel[j].map(cell => String(cell).toLowerCase());
+                if (baris.includes('nama') && baris.includes('jenis kelamin')) {
+                    startIndex = j + 1; // Mulai ambil data tepat 1 baris di bawah judul
+                    break;
+                }
             }
 
+            // 2. Menarik data sesuai letak kolom di template asli
             let excelRowIndex = startIndex;
             for (let i = 0; i < listSiswaUpdate.length; i++) {
+                
+                // Lewati baris kosong jika penginput tidak sengaja melompati baris di Excel
+                while(dataExcel[excelRowIndex] && (!dataExcel[excelRowIndex][1] || String(dataExcel[excelRowIndex][1]).trim() === '')) {
+                    excelRowIndex++;
+                    if(excelRowIndex >= dataExcel.length) break;
+                }
+
                 if (dataExcel[excelRowIndex]) {
                     const barisData = dataExcel[excelRowIndex];
-                    listSiswaUpdate[i].namaSiswa = barisData[0] ? String(barisData[0]).trim() : listSiswaUpdate[i].namaSiswa;
-                    listSiswaUpdate[i].gender    = barisData[1] ? String(barisData[1]).trim() : '-';
-                    listSiswaUpdate[i].keterangan = barisData[2] ? String(barisData[2]).trim() : '-';
+                    
+                    // Indeks 1 = Kolom Nama | Indeks 3 = Kolom Jenis Kelamin | Indeks 10 = Kolom Level
+                    listSiswaUpdate[i].namaSiswa  = barisData[1] ? String(barisData[1]).trim() : listSiswaUpdate[i].namaSiswa;
+                    listSiswaUpdate[i].gender     = barisData[3] ? String(barisData[3]).trim() : '-';
+                    listSiswaUpdate[i].keterangan = barisData[10] ? String(barisData[10]).trim() : '-';
                 }
                 excelRowIndex++;
             }
