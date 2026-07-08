@@ -63,21 +63,26 @@ async function uploadKeSupabaseStorage(file, prefix = 'file') {
     if (!file) return 'tidak_ada_file.png';
     const namaFileUnik = `${prefix}-${Date.now()}${path.extname(file.originalname)}`;
     
-    const { data, error } = await supabase.storage
-        .from('terabaca-files')
-        .upload(namaFileUnik, file.buffer, {
-            contentType: file.mimetype,
-            cacheControl: '3600',
-            upsert: false
-        });
+    try {
+        const { data, error } = await supabase.storage
+            .from('terabaca-files')
+            .upload(namaFileUnik, file.buffer, {
+                contentType: file.mimetype,
+                cacheControl: '3600',
+                upsert: false
+            });
 
-    if (error) {
-        console.error("Gagal Upload Storage Supabase:", error.message);
+        if (error) {
+            console.error("Gagal Upload Storage:", error.message);
+            return 'error_upload.png'; // Kembalikan string error daripada crash
+        }
+        
+        const { data: linkPublik } = supabase.storage.from('terabaca-files').getPublicUrl(namaFileUnik);
+        return linkPublik.publicUrl;
+    } catch (err) {
+        console.error("Exception saat upload:", err);
         return 'error_upload.png';
     }
-    
-    const { data: linkPublik } = supabase.storage.from('terabaca-files').getPublicUrl(namaFileUnik);
-    return linkPublik.publicUrl;
 }
 
 // 1. HALAMAN UTAMA / PORTAL UTAMA (Responsif)

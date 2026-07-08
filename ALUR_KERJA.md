@@ -17,3 +17,4 @@
 ## 3. Metrik Kinerja (KPI) Utama
 *   **Admin:** SLA kecepatan upload file ke pusat setelah tes selesai (Target: maks 2x24 jam).
 *   **Praktisi Saji Hasil:** Persentase ketepatan waktu saji hasil dan persentase retensi (*repeat order*) sekolah dampingan.
+"Update warna UI dan fitur cetak invoice"
