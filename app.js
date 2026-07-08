@@ -316,18 +316,34 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
         const idOrder = req.params.id;
         const { data: order, error } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
         
-        if (error) throw new Error("Supabase Error: " + error.message);
-        if (!order) return res.send("Order tidak ditemukan.");
+        if (error) throw new Error(error.message);
+        if (!order) return res.send("Data tidak ditemukan.");
 
-        // TEST: Hanya tampilkan info dasar, JANGAN proses daftar siswa dulu
+        // GUNAKAN PENGECEKAN AMAN (?. dan || [])
+        const daftarSiswa = order.data_siswa || [];
+        let daftarAnakFormHtml = daftarSiswa.map((siswa) => {
+            // Gunakan optional chaining (?.) untuk mencegah error jika properti tidak ada
+            const isUploaded = (siswa?.fileScanLokal || '').startsWith('http');
+            return `
+                <div style="padding:15px; border:1px solid #ddd; margin-bottom:10px;">
+                    <p>👤 <b>${siswa?.namaSiswa || 'Tanpa Nama'}</b></p>
+                    <small>Berkas: ${isUploaded ? `<a href="${siswa.fileScanLokal}">Cek File</a>` : 'Belum ada'}</small>
+                </div>`;
+        }).join('');
+
         res.send(`
-            <h1>Portal Klien: ${order.id_order}</h1>
-            <p>Nama Klien: ${order.nama_klien}</p>
-            <p>Data Siswa: ${order.data_siswa ? order.data_siswa.length : "Kosong"} anak</p>
-            <a href="/">Kembali</a>
+            <div style="font-family:sans-serif; max-width:600px; margin:auto; padding:20px;">
+                <h2>Portal Klien: ${order.id_order}</h2>
+                <p>Nama Klien: <b>${order.nama_klien}</b></p>
+                <hr>
+                <h3>Daftar Siswa:</h3>
+                ${daftarAnakFormHtml}
+                <br>
+                <a href="/">Kembali ke Beranda</a>
+            </div>
         `);
     } catch (err) {
-        res.status(500).send("Debug Error di Portal: " + err.message);
+        res.status(500).send("Terjadi error saat merender data: " + err.message);
     }
 });
 
