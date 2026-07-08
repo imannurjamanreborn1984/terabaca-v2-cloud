@@ -630,15 +630,23 @@ app.get('/internal/lihat-siswa/:id', pastikanInternal, async (req, res) => {
             <div style="font-family:'Segoe UI',sans-serif; max-width:750px; margin:20px auto; padding:30px; border:1px solid #e5e7eb; border-radius:8px; background-color: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                 <a href="/internal/dashboard" style="text-decoration:none; color:#1A5B9C; font-size:14px; font-weight:bold;">← Kembali ke Dashboard</a>
                 <h3 style="color:#7A4B94;">Daftar Dokumen Masuk Cloud</h3>
-                <p>Lembaga Mitra: <b>${order.nama_klien}</b> [${order.id_order}]</p>
-                <hr style="border:0; border-top:1px solid #e5e7eb; margin:15px 0;">
-                
-                <div style="background-color: #faf5ff; padding: 15px; border-radius: 6px; margin-bottom: 25px; border: 1px solid #e9d5ff;">
-                    <b style="color: #7A4B94; font-size: 14px; display:block; margin-bottom:10px;">📋 Upload Excel Massal (Tim Internal)</b>
-                    <form action="/portal/upload-excel-massal/${order.id_order}" method="POST" enctype="multipart/form-data" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                <p>Lembaga Mitra: <b>${order.nama_lembaga && order.nama_lembaga !== '-' ? order.nama_lembaga : (order.nama_klien || 'Personal')}</b> [${order.id_order}]</p>
+                <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+
+                <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #7A4B94; border-radius: 6px; background-color: #faf5ff;">
+                    <h4 style="margin: 0 0 10px 0; color: #7A4B94;">📋 Upload Excel Massal (Tim Internal)</h4>
+    
+                    <!-- TOMBOL DOWNLOAD TEMPLATE YANG DITAMBAHKAN -->
+                    <div style="margin-bottom: 12px;">
+                        <a href="https://docs.google.com/spreadsheets/d/1vA89O77Zle6w60WvVvR8H56k9zT5zUv6/export?format=xlsx" target="_blank" style="display: inline-block; background-color: #e6a23c; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: bold;">
+                            📥 Unduh Template Excel Resmi
+                        </a>
+                    </div>
+
+                    <form action="/portal/upload-excel-massal/${order.id_order}" method="POST" enctype="multipart/form-data" class="grup-form-klien" style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <input type="hidden" name="asal_halaman" value="internal">
-                        <input type="file" name="file_excel" accept=".xlsx, .xls" required style="flex:1 1 200px; font-size:13px; border:1px solid #cbd5e1; padding:8px; border-radius:4px; background:#fff;">
-                        <button type="submit" style="background-color:#7A4B94; color:white; border:none; padding:10px 15px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:13px; flex:1 1 150px;">Simpan Data Excel</button>
+                        <input type="file" name="file_excel" accept=".xlsx" required style="padding:8px; border:1px solid #ccc; border-radius:6px; background: white; font-size: 14px; flex: 1; min-width: 200px;">
+                        <button type="submit" style="background-color:#7A4B94; color:white; border:none; padding:10px 15px; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 14px; flex: 1; min-width: 150px;">Simpan Data Excel</button>
                     </form>
                 </div>
 
