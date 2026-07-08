@@ -97,11 +97,15 @@ app.get('/', (req, res) => {
             <style>
                 .grup-tombol { display: flex; gap: 10px; flex-wrap: wrap; }
                 .tombol-daftar { flex: 1 1 100%; text-align: center; padding: 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; color: white; box-sizing: border-box; }
-                .grup-form-klien { display: flex; gap: 10px; flex-wrap: wrap; }
-                .input-klien { flex: 1 1 100%; }
+                .grup-form-klien { display: flex; gap: 10px; flex-wrap: wrap; flex-direction: column; }
+                .input-klien { width: 100%; padding:12px; border:1px solid #ccc; border-radius:6px; box-sizing: border-box; font-size: 14px; }
+                .btn-buka { background-color:#1A5B9C; color:white; border:none; padding:12px 15px; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 14px; width: 100%; }
                 @media (min-width: 600px) {
                     .tombol-daftar { flex: 1; }
-                    .input-klien { flex: 1; }
+                    .grup-form-klien { flex-direction: row; }
+                    .input-klien { flex: 2; }
+                    .select-tipe { flex: 1; }
+                    .btn-buka { flex: 1; width: auto; }
                 }
             </style>
         </head>
@@ -122,10 +126,20 @@ app.get('/', (req, res) => {
 
                 <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #1A5B9C; border-radius: 6px; background-color: #f0f7ff;">
                     <h4 style="margin: 0 0 10px 0; color: #1A5B9C;">📥 PORTAL MANDIRI KLIEN</h4>
-                    <p style="margin: 0 0 15px 0; font-size: 13px; color: #4b5563;">Masukkan ID Order Anda di bawah ini untuk melihat Invoice atau mengunggah berkas siswa:</p>
+                    <p style="margin: 0 0 15px 0; font-size: 13px; color: #4b5563;">Masukkan ID Order Anda dan tentukan jenis klien untuk membuka portal:</p>
+                    
                     <form action="/portal/cek-akses-klien" method="POST" class="grup-form-klien">
-                        <input type="text" name="id_order_input" placeholder="Contoh: TRBC-1234" required class="input-klien" style="padding:12px; border:1px solid #ccc; border-radius:6px; box-sizing: border-box; font-size: 14px;">
-                        <button type="submit" class="input-klien" style="background-color:#1A5B9C; color:white; border:none; padding:12px 15px; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 14px;">Buka Portal Klien</button>
+                        <!-- Input ID Order -->
+                        <input type="text" name="id_order_input" placeholder="Contoh: TRBC-1234" required class="input-klien">
+                        
+                        <!-- Dropdown Pilihan Tipe Klien -->
+                        <select name="tipe_klien" class="input-klien select-tipe" style="cursor: pointer; background-color: white;">
+                            <option value="personal">👤 Klien Personal</option>
+                            <option value="lembaga">🏫 Klien Lembaga / Sekolah</option>
+                        </select>
+                        
+                        <!-- Tombol Submit -->
+                        <button type="submit" class="btn-buka">Buka Portal Klien</button>
                     </form>
                 </div>
 
@@ -141,127 +155,15 @@ app.get('/', (req, res) => {
     `);
 });
 
-// ROUTE POST: SINKRONISASI DATABASE BARU
-app.post('/proses-pendaftaran', upload.single('bukti_bayar'), async (req, res) => {
-    const { jenis_pendaftar, kategori, nama_klien, kode_paket, jumlah_testee, kontak, tgl_pelaksanaan, tgl_saji, 
-            ttl, anak_ke, dari_bersaudara, nama_lembaga, nama_cabang, level, jurusan } = req.body;
-    
-    const infoPaketTerpilih = hargaPaketMaster[kode_paket];
-    const hargaSatuan = (jenis_pendaftar === 'personal') ? infoPaketTerpilih.personal : infoPaketTerpilih.lembaga;
-    const totalTagihan = hargaSatuan * parseInt(jumlah_testee || 1);
-    
-    const linkBuktiBayarCloud = await uploadKeSupabaseStorage(req.file, 'bukti');
-
-    let listNamaAnak = [];
-    for(let i = 1; i <= parseInt(jumlah_testee || 1); i++) {
-        listNamaAnak.push({ idSiswa: i, namaSiswa: `Siswa Slot ke-${i}`, gender: '-', keterangan: '-', fileScanLokal: 'Belum Ada', statusFormPusat: '❌ Belum Dikirim' });
-    }
-
-    const idOrderBaru = 'TRBC-' + Math.floor(Math.random() * 9000 + 1000);
-
-    const { error } = await supabase.from('orders').insert([{
-        id_order: idOrderBaru, kategori: kategori, nama_klien: nama_klien, nama_paket: infoPaketTerpilih.nama,
-        jumlah_testee: parseInt(jumlah_testee || 1), kontak: kontak, harga_satuan: hargaSatuan, total_tagihan: totalTagihan,
-        tgl_pelaksanaan: tgl_pelaksanaan, tgl_saji: tgl_saji || 'Menyesuaikan', bukti_bayar_file: linkBuktiBayarCloud,
-        data_siswa: listNamaAnak, ttl: ttl || '-', anak_ke: parseInt(anak_ke || 0), jumlah_bersaudara: parseInt(dari_bersaudara || 0),
-        nama_lembaga: nama_lembaga || '-', nama_cabang: nama_cabang || '-', level_kelas: level || '-', jurusan: jurusan || '-'
-    }]);
-
-    if(error) return res.status(500).send("Database Supabase Gagal Menyimpan: " + error.message);
-
-    res.send(`<meta name="viewport" content="width=device-width, initial-scale=1.0"><div style="font-family:'Segoe UI', sans-serif; text-align:center; padding:50px;"><h2 style="color:#7A4B94;">Sukses!</h2><p>Pendaftaran berhasil disimpan. ID Order: <b>${idOrderBaru}</b></p><a href="/" style="color:#1A5B9C; font-weight:bold;">Kembali ke Beranda</a></div>`);
-});
-
 app.post('/portal/cek-akses-klien', async (req, res) => {
-    const { id_order_input } = req.body;
+    const { id_order_input, tipe_klien } = req.body;
     const { data: order, error } = await supabase.from('orders').select('*').eq('id_order', id_order_input.trim().toUpperCase()).single();
-    if (order) { res.redirect(`/portal/workspace-klien/${order.id_order}`); } 
-    else { res.send(`<script>alert("ID Order tidak valid atau tidak terdaftar!"); window.location.href = "/";</script>`); }
-});
-
-// UPLOAD EXCEL (.XLSX) MASSAL
-// RUTE TAMBAH SISWA MANUAL
-app.post('/portal/tambah-siswa-manual/:idOrder', async (req, res) => {
-    const { idOrder } = req.params;
-    const { namaSiswa, gender, keterangan } = req.body;
-
-    // 1. Ambil data order saat ini
-    const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
-
-    // 2. Siapkan data baru
-    let listSiswa = order.data_siswa || [];
-    listSiswa.push({
-        id: Date.now(), // ID unik berdasarkan waktu
-        namaSiswa: namaSiswa,
-        gender: gender,
-        keterangan: keterangan,
-        fileScanLokal: null // Kosongkan dulu
-    });
-
-    // 3. Simpan kembali ke Supabase
-    await supabase.from('orders').update({ data_siswa: listSiswa }).eq('id_order', idOrder);
-
-    res.redirect(`/portal/workspace-klien/${idOrder}`);
-});
-// UPLOAD EXCEL (.XLSX) MASSAL (VERSI TEMPLATE RESMI)
-app.post('/portal/upload-excel-massal/:idOrder', upload.single('file_excel'), async (req, res) => {
-    const idOrder = req.params.idOrder;
-    const { asal_halaman } = req.body;
     
-    if (!req.file) return res.send(`<script>alert("File Excel tidak ditemukan!"); window.history.back();</script>`);
-
-    try {
-        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-        const sheetName = workbook.SheetNames[0]; 
-        const sheet = workbook.Sheets[sheetName];
-        const dataExcel = xlsx.utils.sheet_to_json(sheet, { header: 1 });
-        console.log("ISI DATA EXCEL YANG DIBACA:");
-console.log(dataExcel);
-
-        const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
-        
-        if (order && dataExcel.length > 0) {
-            let listSiswaUpdate = order.data_siswa;
-            
-            // 1. Mencari otomatis di baris ke berapa judul "Nama" berada
-            let startIndex = 0;
-            for (let j = 0; j < dataExcel.length; j++) {
-                const baris = dataExcel[j].map(cell => String(cell).toLowerCase());
-                if (baris.includes('nama') && baris.includes('jenis kelamin')) {
-                    startIndex = j + 1; // Mulai ambil data tepat 1 baris di bawah judul
-                    break;
-                }
-            }
-
-            // 2. Menarik data sesuai letak kolom di template asli
-            let excelRowIndex = startIndex;
-            for (let i = 0; i < listSiswaUpdate.length; i++) {
-                
-                // Lewati baris kosong jika penginput tidak sengaja melompati baris di Excel
-                while(dataExcel[excelRowIndex] && (!dataExcel[excelRowIndex][1] || String(dataExcel[excelRowIndex][1]).trim() === '')) {
-                    excelRowIndex++;
-                    if(excelRowIndex >= dataExcel.length) break;
-                }
-
-                if (dataExcel[excelRowIndex]) {
-                    const barisData = dataExcel[excelRowIndex];
-                    
-                    // Indeks 1 = Kolom Nama | Indeks 3 = Kolom Jenis Kelamin | Indeks 10 = Kolom Level
-                    listSiswaUpdate[i].namaSiswa  = barisData[1] ? String(barisData[1]).trim() : listSiswaUpdate[i].namaSiswa;
-                    listSiswaUpdate[i].gender     = barisData[3] ? String(barisData[3]).trim() : '-';
-                    listSiswaUpdate[i].keterangan = barisData[10] ? String(barisData[10]).trim() : '-';
-                }
-                excelRowIndex++;
-            }
-            await supabase.from('orders').update({ data_siswa: listSiswaUpdate }).eq('id_order', idOrder);
-        }
-        
-        if(asal_halaman === 'internal') { res.redirect(`/internal/lihat-siswa/${idOrder}`); } 
-        else { res.redirect(`/portal/workspace-klien/${idOrder}`); }
-        
-    } catch (error) {
-        console.error("Gagal membaca Excel:", error);
-        res.send(`<script>alert("Gagal membaca file Excel. Pastikan formatnya .xlsx atau .xls!"); window.history.back();</script>`);
+    if (order) { 
+        // Mengalihkan ke rute workspace dengan membawa parameter ?tipe=personal atau ?tipe=lembaga
+        res.redirect(`/portal/workspace-klien/${order.id_order}?tipe=${tipe_klien || 'personal'}`); 
+    } else { 
+        res.send(`<script>alert("ID Order tidak valid atau tidak terdaftar!"); window.location.href = "/";</script>`); 
     }
 });
 
@@ -314,10 +216,28 @@ app.post('/portal/upload-mandiri-siswa/:idOrder/:idSiswa', upload.single('dokume
 app.get('/portal/workspace-klien/:id', async (req, res) => {
     try {
         const idOrder = req.params.id;
+        // 1. Ambil tipe dari query parameter (?tipe=lembaga atau ?tipe=personal)
+        const tipeKlien = req.query.tipe || 'personal'; 
+
         const { data: order, error } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
         
         if (error) throw new Error(error.message);
         if (!order) return res.send("Data tidak ditemukan.");
+
+        // 2. Kondisional HTML jika klien memilih "lembaga"
+        let komponenLembagaHtml = "";
+        if (tipeKlien === 'lembaga') {
+            komponenLembagaHtml = `
+            <div style="background: #fffdf5; border: 1px dashed #e6a23c; padding: 16px; margin-bottom: 20px; border-radius: 10px;">
+                <h4 style="margin: 0 0 8px 0; color: #c27803;">🏢 Menu Hubungan Lembaga / Sekolah</h4>
+                <p style="font-size: 0.9rem; margin: 0 0 12px 0; color: #666;">Silakan unggah file Excel (.xlsx) data siswa sesuai template untuk memproses nama secara otomatis.</p>
+                <form action="/portal/upload-excel-siswa/${order.id_order}" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: row; gap: 10px; align-items: center;">
+                    <input type="file" name="file_excel" accept=".xlsx" required style="flex: 1;">
+                    <button type="submit" style="background-color: #e6a23c; padding: 8px 12px; font-size: 0.9rem; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Proses Excel</button>
+                </form>
+            </div>
+            `;
+        }
 
         const daftarSiswa = order.data_siswa || [];
         let daftarAnakFormHtml = daftarSiswa.map((siswa) => {
@@ -344,60 +264,20 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
                 <title>Portal Klien</title>
                 <style>
                     * { box-sizing: border-box; }
-                    body { 
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-                        padding: 16px; 
-                        background-color: #f8f9fa;
-                        color: #333;
-                        line-height: 1.5;
-                        margin: 0;
-                    }
-                    .container { 
-                        max-width: 600px; 
-                        margin: 0 auto; 
-                        background: #ffffff;
-                        padding: 20px;
-                        border-radius: 12px;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-                    }
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 16px; background-color: #f8f9fa; color: #333; margin: 0; }
+                    .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
                     h2 { color: #1a1a1a; margin-top: 0; font-size: 1.4rem; }
                     .klien-info { background: #eef2f7; padding: 12px; border-radius: 8px; margin-bottom: 20px; }
                     .klien-info p { margin: 4px 0; font-size: 0.95rem; }
                     h3 { font-size: 1.1rem; color: #4a5568; margin-bottom: 12px; }
-                    
-                    .siswa-card { 
-                        padding: 16px; 
-                        border: 1px solid #e2e8f0; 
-                        margin-bottom: 16px; 
-                        border-radius: 10px; 
-                        background: #fff;
-                    }
-                    .siswa-name { font-size: 1.05rem; margin: 0 0 8px 0; color: #2d3748; display: flex; align-items: center; gap: 6px; }
+                    .siswa-card { padding: 16px; border: 1px solid #e2e8f0; margin-bottom: 16px; border-radius: 10px; background: #fff; }
+                    .siswa-name { font-size: 1.05rem; margin: 0 0 8px 0; color: #2d3748; }
                     .status-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; margin-bottom: 12px; }
                     .status-success { background-color: #def7ec; color: #03543f; }
                     .status-danger { background-color: #fde8e8; color: #9b1c1c; }
-                    
                     form { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
-                    input[type="file"] { 
-                        font-size: 0.9rem; 
-                        padding: 8px; 
-                        border: 1px dashed #cbd5e1; 
-                        border-radius: 6px; 
-                        background: #f8fafc;
-                        cursor: pointer;
-                    }
-                    button { 
-                        background-color: #4f46e5; 
-                        color: white; 
-                        border: none; 
-                        padding: 10px 16px; 
-                        font-size: 0.95rem; 
-                        font-weight: 600; 
-                        border-radius: 6px; 
-                        cursor: pointer; 
-                        transition: background 0.2s;
-                    }
-                    button:hover { background-color: #4338ca; }
+                    input[type="file"] { font-size: 0.9rem; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; }
+                    button { background-color: #4f46e5; color: white; border: none; padding: 10px 16px; font-size: 0.95rem; font-weight: 600; border-radius: 6px; cursor: pointer; }
                     .btn-back { display: inline-block; text-align: center; width: 100%; margin-top: 15px; color: #4f46e5; text-decoration: none; font-size: 0.95rem; }
                 </style>
             </head>
@@ -407,14 +287,19 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
                     <div class="klien-info">
                         <p>📦 <b>ID Order:</b> ${order.id_order}</p>
                         <p>👤 <b>Nama Klien:</b> ${order.nama_klien || 'Iman'}</p>
+                        <p>🏷️ <b>Jenis Portal:</b> ${tipeKlien === 'lembaga' ? '🏫 Lembaga/Sekolah' : '👤 Personal'}</p>
                     </div>
+                    
+                    <!-- Form Excel khusus Lembaga -->
+                    ${komponenLembagaHtml}
+
                     <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
                     <h3>Daftar Siswa</h3>
                     ${daftarAnakFormHtml}
                     <a href="/" class="btn-back">← Kembali ke Beranda</a>
                 </div>
             </body>
-</html>
+            </html>
         `);
     } catch (err) {
         res.status(500).send("Terjadi error: " + err.message);
