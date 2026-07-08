@@ -296,12 +296,15 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
                     <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
                     <h3>Daftar Siswa</h3>
                     ${daftarAnakFormHtml}
+<a href="/portal/invoice/${order.id_order}" target="_blank" style="display: inline-block; text-align: center; width: 100%; margin-top: 25px; background-color: #7A4B94; color: white; padding: 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 0.95rem; box-sizing: border-box;">
+                        📄 Lihat Invoice Resmi Order
+                    </a>
+
                     <a href="/" class="btn-back">← Kembali ke Beranda</a>
                 </div>
             </body>
             </html>
-        `);
-    } catch (err) {
+        `);    } catch (err) {
         res.status(500).send("Terjadi error: " + err.message);
     }
 });
