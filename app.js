@@ -230,10 +230,18 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
             komponenLembagaHtml = `
             <div style="background: #fffdf5; border: 1px dashed #e6a23c; padding: 16px; margin-bottom: 20px; border-radius: 10px;">
                 <h4 style="margin: 0 0 8px 0; color: #c27803;">🏢 Menu Hubungan Lembaga / Sekolah</h4>
-                <p style="font-size: 0.9rem; margin: 0 0 12px 0; color: #666;">Silakan unggah file Excel (.xlsx) data siswa sesuai template untuk memproses nama secara otomatis.</p>
-                <form action="/portal/upload-excel-massal/${order.id_order}" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: row; gap: 10px; align-items: center;">
-                    <input type="file" name="file_excel" accept=".xlsx" required style="flex: 1;">
-                    <button type="submit" style="background-color: #e6a23c; padding: 8px 12px; font-size: 0.9rem; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Proses Excel</button>
+                <p style="font-size: 0.9rem; margin: 0 0 12px 0; color: #666;">Silakan unduh template terlebih dahulu, kemudian unggah file Excel (.xlsx) data siswa yang telah diisi untuk memproses nama secara otomatis.</p>
+                
+                <!-- TOMBOL UNDUH TEMPLATE UNTUK PORTAL KLIEN -->
+                <div style="margin-bottom: 15px;">
+                    <a href="https://docs.google.com/spreadsheets/d/1vA89O77Zle6w60WvVvR8H56k9zT5zUv6/export?format=xlsx" target="_blank" style="display: inline-block; background-color: #e6a23c; color: white; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: bold;">
+                        📥 Unduh Template Excel Resmi
+                    </a>
+                </div>
+
+                <form action="/portal/upload-excel-massal/${order.id_order}" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: row; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="file" name="file_excel" accept=".xlsx" required style="flex: 1; min-width: 200px;">
+                    <button type="submit" style="background-color: #e6a23c; padding: 10px 14px; font-size: 0.9rem; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Proses Excel</button>
                 </form>
             </div>
             `;
