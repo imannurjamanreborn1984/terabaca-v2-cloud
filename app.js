@@ -214,107 +214,101 @@ app.post('/portal/upload-mandiri-siswa/:idOrder/:idSiswa', upload.single('dokume
 
 // WORKSPACE KLIEN
 app.get('/portal/workspace-klien/:id', async (req, res) => {
-    try {
-        const idOrder = req.params.id;
-        // 1. Ambil tipe dari query parameter (?tipe=lembaga atau ?tipe=personal)
-        const tipeKlien = req.query.tipe || 'personal'; 
+    const { id } = req.params;
+    const tipeKlien = req.query.tipe || 'personal'; // Mengambil tipe dari query string (?tipe=lembaga atau ?tipe=personal)
 
-        const { data: order, error } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
-        
-        if (error) throw new Error(error.message);
-        if (!order) return res.send("Data tidak ditemukan.");
+    const { data: order, error } = await supabase.from('orders').select('*').eq('id_order', id).single();
 
-        // 2. Kondisional HTML jika klien memilih "lembaga"
-        let komponenLembagaHtml = "";
-        if (tipeKlien === 'lembaga') {
-            komponenLembagaHtml = `
-            <div style="background: #fffdf5; border: 1px dashed #e6a23c; padding: 16px; margin-bottom: 20px; border-radius: 10px;">
-                <h4 style="margin: 0 0 8px 0; color: #c27803;">🏢 Menu Hubungan Lembaga / Sekolah</h4>
-                <p style="font-size: 0.9rem; margin: 0 0 12px 0; color: #666;">Silakan unduh template terlebih dahulu, kemudian unggah file Excel (.xlsx) data siswa yang telah diisi untuk memproses nama secara otomatis.</p>
-                
-                <!-- TOMBOL UNDUH TEMPLATE UNTUK PORTAL KLIEN -->
-                <div style="margin-bottom: 15px;">
-                    <a href="https://docs.google.com/spreadsheets/d/1vA89O77Zle6w60WvVvR8H56k9zT5zUv6/export?format=xlsx" target="_blank" style="display: inline-block; background-color: #e6a23c; color: white; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: bold;">
-                        📥 Unduh Template Excel Resmi
-                    </a>
-                </div>
+    if (error || !order) {
+        return res.send(`<script>alert("Data tidak ditemukan!"); window.location.href = "/";</script>`);
+    }
 
-                <form action="/portal/upload-excel-massal/${order.id_order}" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: row; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <input type="file" name="file_excel" accept=".xlsx" required style="flex: 1; min-width: 200px;">
-                    <button type="submit" style="background-color: #e6a23c; padding: 10px 14px; font-size: 0.9rem; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Proses Excel</button>
+    // 1. Hitung berkas yang siap
+    let berkasSiap = 0;
+    if (order.data_siswa) {
+        berkasSiap = order.data_siswa.filter(s => s.fileScanLokal && s.fileScanLokal !== 'Belum Ada').length;
+    }
+
+    // 2. Kondisional HTML jika klien memilih "lembaga" (LINK TEMPLATE RESMI ANDA)
+    let komponenLembagaHtml = "";
+    if (tipeKlien === 'lembaga') {
+        komponenLembagaHtml = `
+        <div style="background: #fffdf5; border: 1px dashed #e6a23c; padding: 16px; margin-bottom: 20px; border-radius: 10px;">
+            <h4 style="margin: 0 0 8px 0; color: #c27803;">🏢 Menu Hubungan Lembaga / Sekolah</h4>
+            <p style="font-size: 0.9rem; margin: 0 0 12px 0; color: #666;">Silakan unduh template terlebih dahulu, kemudian unggah file Excel (.xlsx) data siswa yang telah diisi untuk memproses nama secara otomatis.</p>
+            
+            <!-- TOMBOL UNDUH TEMPLATE UNTUK PORTAL KLIEN -->
+            <div style="margin-bottom: 15px;">
+                <a href="https://docs.google.com/spreadsheets/d/1l5Csrrukh8oLQu88xGtAuXNiLHaEeOJkGpdFsUGPJao/export?format=xlsx" target="_blank" style="display: inline-block; background-color: #e6a23c; color: white; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: bold;">
+                    📥 Unduh Template Excel Resmi
+                </a>
+            </div>
+
+            <form action="/portal/upload-excel-massal/${order.id_order}" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: row; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <input type="file" name="file_excel" accept=".xlsx" required style="flex: 1; min-width: 200px;">
+                <button type="submit" style="background-color: #e6a23c; padding: 10px 14px; font-size: 0.9rem; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Proses Excel</button>
+            </form>
+        </div>
+        `;
+    }
+
+    // 3. Susun daftar form upload siswa
+    let daftarAnakFormHtml = "";
+    if (order.data_siswa && order.data_siswa.length > 0) {
+        order.data_siswa.forEach((siswa, index) => {
+            daftarAnakFormHtml += `
+            <div style="border: 1px solid #e5e7eb; padding: 15px; margin-bottom: 15px; border-radius: 8px; background-color: #fafafa;">
+                <h5 style="margin: 0 0 10px 0; color: #4b5563;">Slot #${index + 1}: ${siswa.namaSiswa} (${siswa.gender || '-'})</h5>
+                <p style="margin: 0 0 10px 0; font-size: 12px; color: #6b7280;">Keterangan/Kelas: ${siswa.keterangan || '-'}</p>
+                <form action="/portal/upload-berkas-siswa/${order.id_order}/${siswa.idSiswa || index+1}" method="POST" enctype="multipart/form-data" style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <input type="file" name="berkas_siswa" accept="image/*,application/pdf" required style="flex:1; font-size:13px;">
+                    <button type="submit" style="background-color:#1A5B9C; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:13px; font-weight:bold;">Upload Berkas</button>
                 </form>
+                <div style="margin-top: 8px; font-size: 12px;">
+                    Status Berkas: ${siswa.fileScanLokal && siswa.fileScanLokal !== 'Belum Ada' ? `✅ <a href="${siswa.fileScanLokal}" target="_blank" style="color:#10b981; font-weight:bold;">Lihat Berkas</a>` : '<span style="color:#C73238; font-weight:bold;">❌ Belum Ada Berkas</span>'}
+                </div>
             </div>
             `;
-        }
-
-        const daftarSiswa = order.data_siswa || [];
-        let daftarAnakFormHtml = daftarSiswa.map((siswa) => {
-            const isUploaded = (siswa?.fileScanLokal || '').startsWith('http');
-            return `
-            <div class="siswa-card">
-                <p class="siswa-name">👤 <b>${siswa?.namaSiswa || 'Tanpa Nama'}</b></p>
-                <div class="status-badge ${isUploaded ? 'status-success' : 'status-danger'}">
-                    Status: ${isUploaded ? '✅ Sudah Ada Berkas' : '❌ Belum ada berkas'}
-                </div>
-                <form action="/portal/upload-mandiri-siswa/${order.id_order}/${siswa.idSiswa}" method="POST" enctype="multipart/form-data">
-                    <input type="file" name="dokumen_testee" required>
-                    <button type="submit">Upload Berkas</button>
-                </form>
-            </div>`;
-        }).join('');
-
-        res.send(`
-            <!DOCTYPE html>
-            <html lang="id">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Portal Klien</title>
-                <style>
-                    * { box-sizing: border-box; }
-                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 16px; background-color: #f8f9fa; color: #333; margin: 0; }
-                    .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-                    h2 { color: #1a1a1a; margin-top: 0; font-size: 1.4rem; }
-                    .klien-info { background: #eef2f7; padding: 12px; border-radius: 8px; margin-bottom: 20px; }
-                    .klien-info p { margin: 4px 0; font-size: 0.95rem; }
-                    h3 { font-size: 1.1rem; color: #4a5568; margin-bottom: 12px; }
-                    .siswa-card { padding: 16px; border: 1px solid #e2e8f0; margin-bottom: 16px; border-radius: 10px; background: #fff; }
-                    .siswa-name { font-size: 1.05rem; margin: 0 0 8px 0; color: #2d3748; }
-                    .status-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; margin-bottom: 12px; }
-                    .status-success { background-color: #def7ec; color: #03543f; }
-                    .status-danger { background-color: #fde8e8; color: #9b1c1c; }
-                    form { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
-                    input[type="file"] { font-size: 0.9rem; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; }
-                    button { background-color: #4f46e5; color: white; border: none; padding: 10px 16px; font-size: 0.95rem; font-weight: 600; border-radius: 6px; cursor: pointer; }
-                    .btn-back { display: inline-block; text-align: center; width: 100%; margin-top: 15px; color: #4f46e5; text-decoration: none; font-size: 0.95rem; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h2>Portal Klien</h2>
-                    <div class="klien-info">
-                        <p>📦 <b>ID Order:</b> ${order.id_order}</p>
-                        <p>👤 <b>Nama Klien:</b> ${order.nama_klien || 'Iman'}</p>
-                        <p>🏷️ <b>Jenis Portal:</b> ${tipeKlien === 'lembaga' ? '🏫 Lembaga/Sekolah' : '👤 Personal'}</p>
-                    </div>
-                    
-                    <!-- Form Excel khusus Lembaga -->
-                    ${komponenLembagaHtml}
-
-                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-                    <h3>Daftar Siswa</h3>
-                    ${daftarAnakFormHtml}
-<a href="/portal/invoice/${order.id_order}" target="_blank" style="display: inline-block; text-align: center; width: 100%; margin-top: 25px; background-color: #7A4B94; color: white; padding: 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 0.95rem; box-sizing: border-box;">
-                        📄 Lihat Invoice Resmi Order
-                    </a>
-
-                    <a href="/" class="btn-back">← Kembali ke Beranda</a>
-                </div>
-            </body>
-            </html>
-        `);    } catch (err) {
-        res.status(500).send("Terjadi error: " + err.message);
+        });
     }
+
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Workspace Mandiri Klien</title>
+            <style>
+                body { font-family: 'Segoe UI', sans-serif; background-color: #F8F9FA; margin: 0; padding: 15px; }
+                .container { max-width: 650px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); background-color: white; }
+                .btn-back { display: block; text-align: center; margin-top: 15px; background-color: #6b7280; color: white; padding: 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h3 style="color: #7A4B94; margin-top: 0; text-align: center;">📥 Workspace Mandiri Klien</h3>
+                <p style="text-align: center; color: #4b5563; font-size: 14px;">ID Order: <b>${order.id_order}</b> | Paket: <b>${order.nama_paket}</b></p>
+                <p style="text-align: center; color: #4b5563; font-size: 14px; margin-top: -10px;">Nama Klien: <b>${order.nama_klien || '-'}</b></p>
+                <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+
+                ${komponenLembagaHtml}
+
+                <h4 style="color: #1A5B9C; margin-bottom: 5px;">📁 Progres Unggah Berkas Siswa</h4>
+                <p style="font-size: 13px; color: #4b5563; margin-bottom: 15px;">Total Berkas Siap: <b>${berkasSiap} dari ${order.jumlah_testee || 0} Siswa</b></p>
+                
+                ${daftarAnakFormHtml}
+                
+                <!-- TOMBOL INVOICE -->
+                <a href="/portal/invoice/${order.id_order}" target="_blank" style="display: inline-block; text-align: center; width: 100%; margin-top: 25px; background-color: #7A4B94; color: white; padding: 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 0.95rem; box-sizing: border-box;">
+                    📄 Lihat Invoice Resmi Order
+                </a>
+
+                <a href="/" class="btn-back">← Kembali ke Beranda</a>
+            </div>
+        </body>
+        </html>
+    `);
 });
 
 // INVOICE NOTA RESMI + PRINT PDF
@@ -646,8 +640,8 @@ app.get('/internal/lihat-siswa/:id', pastikanInternal, async (req, res) => {
     
                     <!-- TOMBOL DOWNLOAD TEMPLATE YANG DITAMBAHKAN -->
                     <div style="margin-bottom: 12px;">
-                        <a href="https://docs.google.com/spreadsheets/d/1vA89O77Zle6w60WvVvR8H56k9zT5zUv6/export?format=xlsx" target="_blank" style="display: inline-block; background-color: #e6a23c; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: bold;">
-                            📥 Unduh Template Excel Resmi
+                        <a href="https://docs.google.com/spreadsheets/d/1l5Csrrukh8oLQu88xGtAuXNiLHaEeOJkGpdFsUGPJao/export?format=xlsx" target="_blank" style="display: inline-block; background-color: #e6a23c; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: bold;">
+                        📥 Unduh Template Excel Resmi
                         </a>
                     </div>
 
