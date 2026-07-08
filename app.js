@@ -323,12 +323,14 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
         let daftarAnakFormHtml = daftarSiswa.map((siswa) => {
             const isUploaded = (siswa?.fileScanLokal || '').startsWith('http');
             return `
-            <div style="padding:15px; border:1px solid #ddd; margin-bottom:10px;">
-                <p>👤 <b>${siswa?.namaSiswa || 'Tanpa Nama'}</b></p>
-                <small>Status: ${isUploaded ? '✅ Sudah Ada Berkas' : '❌ Belum ada'}</small>
+            <div class="siswa-card">
+                <p class="siswa-name">👤 <b>${siswa?.namaSiswa || 'Tanpa Nama'}</b></p>
+                <div class="status-badge ${isUploaded ? 'status-success' : 'status-danger'}">
+                    Status: ${isUploaded ? '✅ Sudah Ada Berkas' : '❌ Belum ada berkas'}
+                </div>
                 <form action="/portal/upload-mandiri-siswa/${order.id_order}/${siswa.idSiswa}" method="POST" enctype="multipart/form-data">
                     <input type="file" name="dokumen_testee" required>
-                    <button type="submit">Upload</button>
+                    <button type="submit">Upload Berkas</button>
                 </form>
             </div>`;
         }).join('');
