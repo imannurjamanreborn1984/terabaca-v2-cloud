@@ -685,23 +685,78 @@ app.get('/internal/pengaturan', pastikanInternal, async (req, res) => {
     const { data: resBank } = await supabase.from('settings').select('value').eq('key', 'info_rekening').single();
     const { data: resPraktisi } = await supabase.from('settings').select('value').eq('key', 'daftar_praktisi').single();
     const infoBank = resBank.value;
-    const daftarPraktisi = resPraktisi.value;
+    const daftarPraktisi = resPraktisi.value || [];
+    
+    // Membuat komponen badge hapus otomatis untuk tiap praktisi
+    let praktisiListHtml = "";
+    if (daftarPraktisi.length > 0) {
+        daftarPraktisi.forEach(nama => {
+            praktisiListHtml += `
+                <div style="display: inline-flex; align-items: center; background: #f3f4f6; border: 1px solid #d1d5db; padding: 6px 12px; margin: 4px; border-radius: 20px; font-size: 13px; color: #374151;">
+                    <span style="font-weight: 500;">${nama}</span>
+                    <a href="/internal/hapus-praktisi?nama=${encodeURIComponent(nama)}" onclick="return confirm('Yakin ingin menghapus ${nama} dari praktisi aktif?')" style="margin-left: 8px; color: #dc2626; text-decoration: none; font-weight: bold; cursor: pointer;" title="Hapus Praktisi">×</a>
+                </div>
+            `;
+        });
+    } else {
+        praktisiListHtml = `<em style="color: #9ca3af; font-size: 13px;">Belum ada praktisi terdaftar</em>`;
+    }
+
     res.send(`
-        <body style="background-color: #F8F9FA; padding: 20px; margin: 0;">
-            <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 20px auto; padding: 30px; border: 1px solid #e5e7eb; border-radius: 8px; background:white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                <a href="/internal/dashboard" style="text-decoration: none; color: #1A5B9C; font-size: 14px; font-weight:bold;">← Kembali ke Dashboard</a>
-                <h3 style="color:#7A4B94;">⚙ Panel Pengaturan Kantor Cabang (Cloud)</h3>
-                <hr style="border:0; border-top:1px solid #e5e7eb; margin:15px 0;">
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Panel Pengaturan Kantor Cabang</title>
+            <style>
+                body { background-color: #F8F9FA; padding: 15px; margin: 0; font-family: 'Segoe UI', sans-serif; }
+                .wrapper-box { max-width: 600px; margin: 10px auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); box-sizing: border-box; }
+                label { display: block; font-size: 14px; color: #4b5563; font-weight: bold; margin-bottom: 5px; }
+                input[type="text"] { width: 100%; padding: 12px; margin-bottom: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+                .btn-submit { width: 100%; padding: 14px; background: #1A5B9C; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
+                .section-title { font-size: 14px; color: #4b5563; font-weight: bold; margin-top: 15px; margin-bottom: 8px; }
+                @media (max-width: 480px) {
+                    body { padding: 10px; }
+                    .wrapper-box { padding: 15px; margin: 5px auto; border-radius: 6px; }
+                    h3 { font-size: 1.15rem; }
+                    input[type="text"] { padding: 10px; font-size: 14px; }
+                    .btn-submit { padding: 12px; font-size: 15px; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="wrapper-box">
+                <a href="/internal/dashboard" style="text-decoration: none; color: #1A5B9C; font-size: 14px; font-weight: bold;">← Kembali ke Dashboard</a>
+                <h3 style="color: #7A4B94; margin-top: 15px; margin-bottom: 5px;">⚙ Panel Pengaturan Kantor Cabang (Cloud)</h3>
+                <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 15px 0;">
+                
                 <form action="/internal/simpan-pengaturan" method="POST">
-                    <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Bank:</label><input type="text" name="bank" value="${infoBank.bank}" required style="width:100%; padding:10px; margin-bottom:15px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
-                    <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nomor Rekening:</label><input type="text" name="nomor_rekening" value="${infoBank.nomorRekening}" required style="width:100%; padding:10px; margin-bottom:15px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
-                    <label style="font-size:14px; color:#4b5563; font-weight:bold;">Nama Pemilik Rekening:</label><input type="text" name="atas_nama" value="${infoBank.atasNama}" required style="width:100%; padding:10px; margin-bottom:25px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
-                    <label style="font-size:14px; color:#4b5563; font-weight:bold;">Tambah Anggota Praktisi Lapangan Baru:</label><input type="text" name="praktisi_baru" placeholder="Ketik nama praktisi..." style="width:100%; padding:10px; margin-bottom:5px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
-                    <small style="color:#6b7280; display:block; margin-bottom:20px;">Aktif: <i>${daftarPraktisi.join(', ')}</i></small>
-                    <button type="submit" style="width:100%; padding:12px; background:#1A5B9C; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">💾 Simpan ke Supabase Cloud</button>
+                    <label>Nama Bank:</label>
+                    <input type="text" name="bank" value="${infoBank.bank}" required>
+                    
+                    <label>Nomor Rekening:</label>
+                    <input type="text" name="nomor_rekening" value="${infoBank.nomorRekening}" required>
+                    
+                    <label>Nama Pemilik Rekening:</label>
+                    <input type="text" name="atas_nama" value="${infoBank.atasNama}" required>
+                    
+                    <hr style="border: 0; border-top: 1px dashed #e5e7eb; margin: 20px 0;">
+                    
+                    <label>Tambah Anggota Praktisi Lapangan Baru:</label>
+                    <input type="text" name="praktisi_baru" placeholder="Ketik nama praktisi...">
+                    
+                    <!-- AREA MANAGEMEN PRAKTISI AKTIF UNTUK MENGHAPUS -->
+                    <div class="section-title">Daftar Praktisi Lapangan Aktif (Klik × untuk Hapus):</div>
+                    <div style="background: #fafafa; border: 1px solid #e5e7eb; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                        ${praktisiListHtml}
+                    </div>
+                    
+                    <button type="submit" class="btn-submit">💾 Simpan ke Supabase Cloud</button>
                 </form>
             </div>
         </body>
+        </html>
     `);
 });
 app.post('/internal/simpan-pengaturan', pastikanInternal, async (req, res) => {
