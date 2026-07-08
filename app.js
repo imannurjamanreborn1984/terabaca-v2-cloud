@@ -319,43 +319,43 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
         if (error) throw new Error(error.message);
         if (!order) return res.send("Data tidak ditemukan.");
 
-        // GUNAKAN PENGECEKAN AMAN (?. dan || [])
         const daftarSiswa = order.data_siswa || [];
-            let daftarAnakFormHtml = daftarSiswa.map((siswa) => {
-                const isUploaded = (siswa?.fileScanLokal || '').startsWith('http');
-                return `
-                <div style="padding:15px; border:1px solid #ddd; margin-bottom:10px;">
+        let daftarAnakFormHtml = daftarSiswa.map((siswa) => {
+            const isUploaded = (siswa?.fileScanLokal || '').startsWith('http');
+            return `
+            <div style="padding:15px; border:1px solid #ddd; margin-bottom:10px;">
                 <p>👤 <b>${siswa?.namaSiswa || 'Tanpa Nama'}</b></p>
                 <small>Status: ${isUploaded ? '✅ Sudah Ada Berkas' : '❌ Belum ada'}</small>
-            
-                <!-- TAMBAHKAN FORM KEMBALI DI SINI -->
                 <form action="/portal/upload-mandiri-siswa/${order.id_order}/${siswa.idSiswa}" method="POST" enctype="multipart/form-data">
                     <input type="file" name="dokumen_testee" required>
                     <button type="submit">Upload</button>
                 </form>
-                </div>`;
+            </div>`;
         }).join('');
 
         res.send(`
-    <style>
-        body { font-family: sans-serif; padding: 20px; }
-        .siswa-card { padding: 15px; border: 1px solid #ddd; margin-bottom: 15px; border-radius: 8px; }
-    </style>
-    ... (tampilan Anda) ...
-`);
-        res.send(`
-            <div style="font-family:sans-serif; max-width:600px; margin:auto; padding:20px;">
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Portal Klien</title>
+                <style>
+                    body { font-family: sans-serif; padding: 20px; }
+                    .siswa-card { padding: 15px; border: 1px solid #ddd; margin-bottom: 15px; border-radius: 8px; }
+                </style>
+            </head>
+            <body>
                 <h2>Portal Klien: ${order.id_order}</h2>
-                <p>Nama Klien: <b>${order.nama_klien}</b></p>
+                <p>Nama Klien: <b>${order.nama_klien || 'Iman'}</b></p>
                 <hr>
                 <h3>Daftar Siswa:</h3>
                 ${daftarAnakFormHtml}
                 <br>
                 <a href="/">Kembali ke Beranda</a>
-            </div>
+            </body>
+            </html>
         `);
     } catch (err) {
-        res.status(500).send("Terjadi error saat merender data: " + err.message);
+        res.status(500).send("Terjadi error: " + err.message);
     }
 });
 
