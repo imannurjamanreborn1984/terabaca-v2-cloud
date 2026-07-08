@@ -321,13 +321,18 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
 
         // GUNAKAN PENGECEKAN AMAN (?. dan || [])
         const daftarSiswa = order.data_siswa || [];
-        let daftarAnakFormHtml = daftarSiswa.map((siswa) => {
-            // Gunakan optional chaining (?.) untuk mencegah error jika properti tidak ada
-            const isUploaded = (siswa?.fileScanLokal || '').startsWith('http');
-            return `
+            let daftarAnakFormHtml = daftarSiswa.map((siswa) => {
+                const isUploaded = (siswa?.fileScanLokal || '').startsWith('http');
+                return `
                 <div style="padding:15px; border:1px solid #ddd; margin-bottom:10px;">
-                    <p>👤 <b>${siswa?.namaSiswa || 'Tanpa Nama'}</b></p>
-                    <small>Berkas: ${isUploaded ? `<a href="${siswa.fileScanLokal}">Cek File</a>` : 'Belum ada'}</small>
+                <p>👤 <b>${siswa?.namaSiswa || 'Tanpa Nama'}</b></p>
+                <small>Status: ${isUploaded ? '✅ Sudah Ada Berkas' : '❌ Belum ada'}</small>
+            
+                <!-- TAMBAHKAN FORM KEMBALI DI SINI -->
+                <form action="/portal/upload-mandiri-siswa/${order.id_order}/${siswa.idSiswa}" method="POST" enctype="multipart/form-data">
+                    <input type="file" name="dokumen_testee" required>
+                    <button type="submit">Upload</button>
+                </form>
                 </div>`;
         }).join('');
 
@@ -494,7 +499,7 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
         
         barisTabel += `<tr style="border-bottom:1px solid #e5e7eb;font-size:13px; background-color:white;">
             <td style="padding:12px;"><b>${order.id_order}</b></td>
-            <td style="padding:12px;"><b>${order.nama_klien}</b><br><small style="color:#7A4B94; font-weight:bold;">${order.nama_paket}</small><br><a href="/internal/lihat-siswa/${order.id_order}" style="color:#1A5B9C;font-weight:bold;font-size:11px;">🔎 Kelola Berkas Anak (${berkasSiap}/${order.jumlah_testee || 0} Siap)</a></td>
+            <td style="padding:12px;"><b>${order.nama_klien || 'Nama Klien Belum Diisi'}</b><br><small style="color:#7A4B94; font-weight:bold;">${order.nama_paket}</small><br><a href="/internal/lihat-siswa/${order.id_order}" style="color:#1A5B9C;font-weight:bold;font-size:11px;">🔎 Kelola Berkas Anak (${berkasSiap}/${order.jumlah_testee || 0} Siap)</a></td>
             <td style="padding:12px;text-align:center;">${order.jumlah_testee || 0}</td>
             <td style="padding:12px;">Rp ${(order.total_tagihan || 0).toLocaleString('id-ID')}<br>${order.status_pembayaran==='Lunas'?`<span style="color:#10b981;font-weight:bold;">✔ Lunas</span>`:`<a href="/internal/lunaskan/${order.id_order}" style="color:#C73238; font-weight:bold;">Set Lunas</a>`}</td>
             <td style="padding:12px;"><form action="/internal/plot-tim/${order.id_order}" method="POST" style="display:flex;flex-direction:column;gap:3px;"><select name="praktisi_lapangan" style="font-size:10px;">${opsiPraktisiLap}</select><select name="praktisi_saji" style="font-size:10px;">${opsiPraktisiSaji}</select><button type="submit" style="font-size:10px; background-color:#1A5B9C; color:white; border:none; padding:4px; border-radius:3px;">Simpan Tim</button></form></td>
