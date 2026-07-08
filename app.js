@@ -628,5 +628,73 @@ app.listen(PORT, () => {
     console.log(`==================================================`);
 });
 
+// UPLOAD EXCEL (.XLSX) MASSAL (VERSI TEMPLATE RESMI)
+app.post('/portal/upload-excel-massal/:idOrder', upload.single('file_excel'), async (req, res) => {
+    const idOrder = req.params.idOrder;
+    const { asal_halaman } = req.body;
+    
+    if (!req.file) return res.send(`<script>alert("File Excel tidak ditemukan!"); window.history.back();</script>`);
+
+    try {
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0]; 
+        const sheet = workbook.Sheets[sheetName];
+        const dataExcel = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+        
+        console.log("ISI DATA EXCEL YANG DIBACA:", dataExcel);
+
+        const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
+        
+        if (order && dataExcel.length > 0) {
+            let listSiswaUpdate = order.data_siswa || [];
+            
+            // 1. Mencari otomatis di baris ke berapa judul "Nama" berada
+            let startIndex = 0;
+            for (let j = 0; j < dataExcel.length; j++) {
+                if (dataExcel[j]) {
+                    const baris = dataExcel[j].map(cell => String(cell || '').toLowerCase());
+                    if (baris.includes('nama') && baris.includes('jenis kelamin')) {
+                        startIndex = j + 1; // Mulai ambil data tepat 1 baris di bawah judul
+                        break;
+                    }
+                }
+            }
+
+            // 2. Menarik data sesuai letak kolom di template asli
+            let excelRowIndex = startIndex;
+            for (let i = 0; i < listSiswaUpdate.length; i++) {
+                
+                // Lewati baris kosong jika penginput tidak sengaja melompati baris di Excel
+                while(dataExcel[excelRowIndex] && (!dataExcel[excelRowIndex][1] || String(dataExcel[excelRowIndex][1]).trim() === '')) {
+                    excelRowIndex++;
+                    if(excelRowIndex >= dataExcel.length) break;
+                }
+
+                if (dataExcel[excelRowIndex]) {
+                    const barisData = dataExcel[excelRowIndex];
+                    
+                    // Indeks 1 = Kolom Nama | Indeks 3 = Kolom Jenis Kelamin | Indeks 10 = Kolom Level
+                    listSiswaUpdate[i].namaSiswa  = barisData[1] ? String(barisData[1]).trim() : listSiswaUpdate[i].namaSiswa;
+                    listSiswaUpdate[i].gender     = barisData[3] ? String(barisData[3]).trim() : '-';
+                    listSiswaUpdate[i].keterangan = barisData[10] ? String(barisData[10]).trim() : '-';
+                }
+                excelRowIndex++;
+            }
+            
+            // Simpan pembaruan nama ke Supabase
+            await supabase.from('orders').update({ data_siswa: listSiswaUpdate }).eq('id_order', idOrder);
+        }
+        
+        if(asal_halaman === 'internal') { 
+            res.redirect(`/internal/lihat-siswa/${idOrder}`); 
+        } else { 
+            res.redirect(`/portal/workspace-klien/${idOrder}?tipe=lembaga`); 
+        }
+        
+    } catch (error) {
+        console.error("Gagal membaca Excel:", error);
+        res.send(`<script>alert("Gagal membaca file Excel. Pastikan formatnya .xlsx atau .xls!"); window.history.back();</script>`);
+    }
+});
 // BARIS WAJIB UNTUK VERCEL 👇
 module.exports = app;
