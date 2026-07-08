@@ -443,8 +443,12 @@ app.get('/internal/logout', (req, res) => { sessionSandiBenar = false; res.redir
 // DASHBOARD UTAMA MANAJEMEN INTERNAL
 app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
     const { data: listOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-    const { data: settingPraktisi } = await supabase.from('settings').select('value').eq('key', 'daftar_praktisi').single();
+    const { data: settingPraktisi } = await supabase.from('settings').select('value').eq('key', 'daftar_practisi').single();
     const daftarPraktisi = (settingPraktisi && settingPraktisi.value) ? settingPraktisi.value : [];
+    
+    // DETEKSI APAKAH YANG LOGIN ADALAH TIM PUSAT
+    const apakahPusat = req.session && req.session.role === 'pusat'; 
+
     let barisTabel = '';
     
     (listOrders || []).forEach((order) => {
@@ -456,14 +460,50 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
         });
         const berkasSiap = (order.data_siswa && Array.isArray(order.data_siswa)) ? order.data_siswa.filter(s => s.fileScanLokal && s.fileScanLokal.startsWith('http')).length : 0;
         
-barisTabel += `<tr style="border-bottom:1px solid #e5e7eb;font-size:13px; background-color:white;">
+        // 1. Kondisional Fitur Keuangan untuk Pusat
+        let kolomKeuanganHtml = `Rp ${(order.total_tagihan || 0).toLocaleString('id-ID')}<br>`;
+        if (order.status_pembayaran === 'Lunas') {
+            kolomKeuanganHtml += `<span style="color:#10b981;font-weight:bold;">✔ Lunas</span>`;
+        } else {
+            if (apakahPusat) {
+                kolomKeuanganHtml += `<span style="color:#9ca3af;font-size:12px;font-style:italic;">Belum Lunas</span>`;
+            } else {
+                kolomKeuanganHtml += `<a href="/internal/lunaskan/${order.id_order}" style="color:#C73238; font-weight:bold;">Set Lunas</a>`;
+            }
+        }
+
+        // 2. Kondisional Form Plotting Tim untuk Pusat
+        let kolomPlotTimHtml = '';
+        if (apakahPusat) {
+            kolomPlotTimHtml = `<span style="color:#6b7280; font-size:12px; font-style:italic;">Dikelola oleh Cabang</span>`;
+        } else {
+            kolomPlotTimHtml = `
+                <form action="/internal/plot-tim/${order.id_order}" method="POST" style="display:flex;flex-direction:column;gap:3px;">
+                    <select name="praktisi_lapangan" style="font-size:10px;">${opsiPraktisiLap}</select>
+                    <select name="praktisi_saji" style="font-size:10px;">${opsiPraktisiSaji}</select>
+                    <button type="submit" style="font-size:10px; background-color:#1A5B9C; color:white; border:none; padding:4px; border-radius:3px; cursor:pointer;">Simpan Tim</button>
+                </form>
+            `;
+        }
+        
+        barisTabel += `
+        <tr style="border-bottom:1px solid #e5e7eb;font-size:13px; background-color:white;">
             <td data-label="ID" style="padding:12px;"><b>${order.id_order}</b></td>
-            <td data-label="Nama Klien" style="padding:12px;"><b>${order.nama_klien || 'Nama Klien Belum Diisi'}</b><br><small style="color:#7A4B94; font-weight:bold;">${order.nama_paket}</small><br><a href="/internal/lihat-siswa/${order.id_order}" style="color:#1A5B9C;font-weight:bold;font-size:11px;">🔎 Kelola Berkas Anak (${berkasSiap}/${order.jumlah_testee || 0} Siap)</a></td>
+            <td data-label="Nama Klien" style="padding:12px;">
+                <b>${order.nama_klien || 'Nama Klien Belum Diisi'}</b><br>
+                <small style="color:#7A4B94; font-weight:bold;">${order.nama_paket}</small><br>
+                <a href="/internal/lihat-siswa/${order.id_order}" style="color:#1A5B9C;font-weight:bold;font-size:11px;">🔎 Kelola Berkas Anak (${berkasSiap}/${order.jumlah_testee || 0} Siap)</a>
+            </td>
             <td data-label="Testee" style="padding:12px;text-align:center;">${order.jumlah_testee || 0}</td>
-            <td data-label="Keuangan" style="padding:12px;">Rp ${(order.total_tagihan || 0).toLocaleString('id-ID')}<br>${order.status_pembayaran==='Lunas'?`<span style="color:#10b981;font-weight:bold;">✔ Lunas</span>`:`<a href="/internal/lunaskan/${order.id_order}" style="color:#C73238; font-weight:bold;">Set Lunas</a>`}</td>
-            <td data-label="Plotting Tim" style="padding:12px;"><form action="/internal/plot-tim/${order.id_order}" method="POST" style="display:flex;flex-direction:column;gap:3px;"><select name="praktisi_lapangan" style="font-size:10px;">${opsiPraktisiLap}</select><select name="praktisi_saji" style="font-size:10px;">${opsiPraktisiSaji}</select><button type="submit" style="font-size:10px; background-color:#1A5B9C; color:white; border:none; padding:4px; border-radius:3px;">Simpan Tim</button></form></td>
+            <td data-label="Keuangan" style="padding:12px;">${kolomKeuanganHtml}</td>
+            <td data-label="Plotting Tim" style="padding:12px;">${kolomPlotTimHtml}</td>
             <td data-label="Status Tim" style="padding:12px;font-size:11px;"><b>Lap:</b> ${order.praktisi_lapangan || '-'}<br><b>Saji:</b> ${order.praktisi_saji || '-'}</td>
-            <td data-label="Setoran Pusat" style="padding:12px;text-align:center;"><div>${order.status_upload_pusat || '-'}</div><a href="/internal/upload-pusat/${order.id_order}" style="font-size:10px; color:#7A4B94; font-weight:bold;">📤 Struk Pusat</a></td>
+            
+            <!-- PERBAIKAN REDAKSI: STRUK PUSAT -> HASIL TEST -->
+            <td data-label="Hasil Test" style="padding:12px;text-align:center;">
+                <div>${order.status_upload_pusat || '-'}</div>
+                <a href="/internal/upload-pusat/${order.id_order}" style="display:inline-block; margin-top:5px; padding:4px 8px; background-color:#7A4B94; color:white; text-decoration:none; border-radius:4px; font-size:10px; font-weight:bold;">📤 Hasil Test</a>
+            </td>
         </tr>`;
     });
 
@@ -530,16 +570,14 @@ barisTabel += `<tr style="border-bottom:1px solid #e5e7eb;font-size:13px; backgr
                     vertical-align: top;
                 }
 
-                /* ===== DESAIN RESPONSIF KHUSUS HP (LAYAR DI BAWAH 850PX) ===== */
+                /* ===== DESAIN RESPONSIF KHUSUS HP ===== */
                 @media screen and (max-width: 850px) {
                     .header-area { flex-direction: column; text-align: center; justify-content: center; }
                     .grup-tombol-header { width: 100%; }
                     .btn-header { flex: 1; text-align: center; }
                     
-                    /* Sembunyikan header asli tabel desktop */
                     .responsive-table thead { display: none; }
                     
-                    /* Ubah baris tabel (tr) menjadi kartu (card) terpisah */
                     .responsive-table tr { 
                         display: block; 
                         border: 1px solid #7A4B94; 
@@ -549,17 +587,15 @@ barisTabel += `<tr style="border-bottom:1px solid #e5e7eb;font-size:13px; backgr
                         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
                     }
                     
-                    /* Ubah kolom tabel (td) menjadi berbaris ke bawah */
                     .responsive-table td { 
                         display: flex; 
                         flex-direction: column; 
                         padding: 6px 4px; 
                         border-bottom: 1px dashed #f3f4f6;
-                        text-align: left !important; /* Ratakan kiri di HP */
+                        text-align: left !important; 
                     }
                     .responsive-table td:last-child { border-bottom: none; }
                     
-                    /* Trik memunculkan label judul kolom otomatis */
                     .responsive-table td::before {
                         content: attr(data-label);
                         font-weight: bold;
@@ -576,7 +612,8 @@ barisTabel += `<tr style="border-bottom:1px solid #e5e7eb;font-size:13px; backgr
                 <div class="header-area">
                     <h2><span style="color:#7A4B94;"> Bars Dashboard Cloud</span> Kantor Cabang Tasikmalaya</h2>
                     <div class="grup-tombol-header">
-                        <a href="/internal/pengaturan" class="btn-header" style="background-color:#1A5B9C;">⚙ Pengaturan Sistem</a>
+                        <!-- SEMBUNYIKAN TOMBOL PENGATURAN JIKA YANG MASUK ADALAH AKUN PUSAT -->
+                        ${apakahPusat ? '' : `<a href="/internal/pengaturan" class="btn-header" style="background-color:#1A5B9C;">⚙ Pengaturan Sistem</a>`}
                         <a href="/internal/logout" class="btn-header" style="background-color:#C73238;">🔒 Logout</a>
                     </div>
                 </div>
@@ -590,7 +627,8 @@ barisTabel += `<tr style="border-bottom:1px solid #e5e7eb;font-size:13px; backgr
                             <th>Keuangan</th>
                             <th>Plotting Tim</th>
                             <th>Status Tim</th>
-                            <th style="text-align:center;">Setoran Pusat</th>
+                            <!-- PERBAIKAN HEADER DESKTOP -->
+                            <th style="text-align:center;">Hasil Test</th>
                         </tr>
                     </thead>
                     <tbody>
