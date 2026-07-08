@@ -878,6 +878,154 @@ app.get('/internal/hapus-praktisi', pastikanInternal, async (req, res) => {
     // 4. Balikkan halaman dengan alert sukses
     res.send(`<script>alert("Praktisi '${namaYangDihapus}' berhasil dinonaktifkan!"); window.location.href = "/internal/pengaturan";</script>`);
 });
+// --- RUTE BARU: HALAMAN UNGGAH HASIL TEST (PUSAT) ---
+app.get('/internal/upload-pusat/:idOrder', pastikanInternal, async (req, res) => {
+    const { idOrder } = req.params;
+
+    // Ambil data order dari Supabase untuk menampilkan nama lembaga/klien
+    const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
+
+    if (!order) {
+        return res.send(`<script>alert("Data order tidak ditemukan!"); window.location.href = "/internal/dashboard";</script>`);
+    }
+
+    const namaTampilan = order.nama_lembaga && order.nama_lembaga !== '-' ? order.nama_lembaga : (order.nama_klien || 'Personal');
+
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Upload Hasil Test - Pusat</title>
+            <style>
+                body { 
+                    background-color: #F8F9FA; 
+                    padding: 15px; 
+                    margin: 0; 
+                    font-family: 'Segoe UI', sans-serif; 
+                }
+                .upload-box { 
+                    max-width: 500px; 
+                    margin: 30px auto; 
+                    padding: 25px; 
+                    border: 1px solid #e5e7eb; 
+                    border-radius: 8px; 
+                    background: white; 
+                    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+                    box-sizing: border-box; 
+                }
+                .btn-back { 
+                    text-decoration: none; 
+                    color: #1A5B9C; 
+                    font-size: 14px; 
+                    font-weight: bold; 
+                }
+                .info-text {
+                    font-size: 14px;
+                    color: #4b5563;
+                    margin: 10px 0 20px 0;
+                    line-height: 1.5;
+                }
+                input[type="file"] { 
+                    width: 100%; 
+                    padding: 10px; 
+                    margin-bottom: 20px; 
+                    box-sizing: border-box; 
+                    border: 1px solid #ccc; 
+                    border-radius: 6px; 
+                    background: #f9fafb;
+                    font-size: 14px; 
+                }
+                .btn-submit { 
+                    width: 100%; 
+                    padding: 12px; 
+                    background: #7A4B94; 
+                    color: white; 
+                    border: none; 
+                    border-radius: 6px; 
+                    font-weight: bold; 
+                    cursor: pointer; 
+                    font-size: 15px; 
+                }
+                @media (max-width: 480px) {
+                    .upload-box { padding: 20px; margin: 15px auto; }
+                    h3 { font-size: 1.2rem; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="upload-box">
+                <a href="/internal/dashboard" class="btn-back">← Kembali ke Dashboard</a>
+                <h3 style="color: #7A4B94; margin-top: 15px; margin-bottom: 5px;">📤 Unggah Hasil Test Resmi</h3>
+                <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 15px 0;">
+                
+                <div class="info-text">
+                    Lembaga/Klien: <b>${namaTampilan}</b><br>
+                    ID Order: <b>[${idOrder}]</b>
+                </div>
+
+                <!-- Form mengarah ke rute eksekusi simpan berkas -->
+                <form action="/internal/simpan-upload-pusat/${idOrder}" method="POST" enctype="multipart/form-data">
+                    <label style="display:block; font-size:13px; font-weight:bold; color:#374151; margin-bottom:8px;">Pilih File Hasil Test (PDF/ZIP/Excel):</label>
+                    <input type="file" name="file_hasil" required>
+                    
+                    <button type="submit" class="btn-submit">Simpan & Kirim Hasil Test</button>
+                </form>
+            </div>
+        </body>
+        </html>
+    `);
+});
+// --- RUTE EKSEKUSI: PUSAT UPLOAD FILE KE SUPABASE STORAGE ---
+app.post('/internal/simpan-upload-pusat/:idOrder', pastikanInternal, upload.single('file_hasil'), async (req, res) => {
+    const { idOrder } = req.params;
+
+    try {
+        // 1. Validasi apakah ada file yang diunggah
+        if (!req.file) {
+            return res.send(`<script>alert("Gagal: Pilih file terlebih dahulu!"); window.history.back();</script>`);
+        }
+
+        // 2. Siapkan nama file unik agar tidak bentrok di Supabase Storage
+        const fileExtension = req.file.originalname.split('.').pop();
+        const namaFileUnik = `hasil-${idOrder}-${Date.now()}.${fileExtension}`;
+
+        // 3. Upload file mentah dari memori ke Bucket Storage Supabase ('hasil-test')
+        const { data: storageData, error: storageError } = await supabase.storage
+            .from('hasil-test')
+            .upload(namaFileUnik, req.file.buffer, {
+                contentType: req.file.mimetype,
+                upsert: true
+            });
+
+        if (storageError) throw storageError;
+
+        // 4. Ambil URL Publik dari file yang barusan berhasil di-upload
+        const { data: urlData } = supabase.storage
+            .from('hasil-test')
+            .getPublicUrl(namaFileUnik);
+
+        const linkUrlPublik = urlData.publicUrl;
+
+        // 5. Update kolom 'status_upload_pusat' di tabel 'orders' dengan komponen link HTML
+        const komponenLinkHtml = `<a href="${linkUrlPublik}" target="_blank" style="color:#7A4B94; font-weight:bold; text-decoration:none;">💾 Lihat Hasil</a>`;
+
+        const { error: dbError } = await supabase
+            .from('orders')
+            .update({ status_upload_pusat: komponenLinkHtml })
+            .eq('id_order', idOrder);
+
+        if (dbError) throw dbError;
+
+        // 6. Selesai! Kembalikan ke dashboard dengan pesan sukses
+        res.send(`<script>alert("Berhasil! Hasil Test telah terunggah dan diperbarui di Cloud."); window.location.href = "/internal/dashboard";</script>`);
+
+    } catch (err) {
+        console.error("Error Upload Pusat:", err);
+        res.status(500).send(`Gagal memproses unggahan: ${err.message || err}`);
+    }
+});
 app.listen(PORT, () => {
     console.log(`==================================================`);
     console.log(` Terabaca Cloud Terkoneksi di http://localhost:${PORT}`);
