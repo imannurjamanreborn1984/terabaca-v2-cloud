@@ -312,88 +312,23 @@ app.post('/portal/upload-mandiri-siswa/:idOrder/:idSiswa', upload.single('dokume
 
 // WORKSPACE KLIEN
 app.get('/portal/workspace-klien/:id', async (req, res) => {
-    const idOrder = req.params.id;
-    const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
-    if (!order) return res.send("Data tidak ditemukan.");
-    
-    let daftarAnakFormHtml = '';
-    order.data_siswa.forEach((siswa) => {
-        const isUploaded = siswa.fileScanLokal.startsWith('http');
-        daftarAnakFormHtml += `
-            <div style="padding:15px; background:#fff; border:1px solid #e5e7eb; border-radius:6px; margin-bottom:10px; display:flex; flex-direction:column; gap:12px;">
-                <div>
-                    <span style="font-weight:bold; color:#1e293b;">👤 ${siswa.namaSiswa}</span> 
-                    <span style="background:#e2e8f0; font-size:11px; padding:2px 6px; border-radius:4px; margin-left:5px; display:inline-block; margin-top:4px;">${siswa.gender}</span>
-                    <span style="background:#e0f2fe; color:#1A5B9C; font-size:11px; padding:2px 6px; border-radius:4px; margin-left:5px; display:inline-block; margin-top:4px;">${siswa.keterangan}</span>
-                    <br><small style="color:#6b7280; display:block; margin-top:6px;">Berkas Scan: ${isUploaded ? `<a href="${siswa.fileScanLokal}" target="_blank" style="color:#1A5B9C; font-weight:bold;">✅ Lihat Berkas Online</a>` : '❌ Belum Ada Berkas Gambar'}</small>
-                </div>
-                <form action="/portal/upload-mandiri-siswa/${order.id_order}/${siswa.idSiswa}" method="POST" enctype="multipart/form-data" style="margin:0; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
-                    <input type="file" name="dokumen_testee" required style="font-size:13px; flex: 1 1 200px; border:1px solid #e5e7eb; padding:6px; border-radius:4px; box-sizing:border-box;">
-                    <button type="submit" style="background-color:#1A5B9C; color:white; border:none; padding:8px 15px; border-radius:4px; font-size:13px; font-weight:bold; cursor:pointer; flex: 1 1 100%;">Upload</button>
-                </form>
-            </div>`;
-    });
+    try {
+        const idOrder = req.params.id;
+        const { data: order, error } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
+        
+        if (error) throw new Error("Supabase Error: " + error.message);
+        if (!order) return res.send("Order tidak ditemukan.");
 
-    res.send(`
-        <!DOCTYPE html>
-        <html lang="id">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Workspace - ${order.id_order}</title>
-            <style>
-                .tabel-scroll { overflow-x: auto; margin-bottom: 15px; }
-                .kepala-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-                @media (min-width: 600px) {
-                    .kepala-header a { flex: unset; }
-                    div[style*="flex-direction:column; gap:12px;"] { flex-direction: row !important; justify-content: space-between !important; align-items: center !important; }
-                    form[style*="flex-wrap:wrap;"] button { flex: unset !important; }
-                }
-            </style>
-        </head>
-        <body style="background-color: #F8F9FA; margin: 0; padding: 15px;">
-            <div style="font-family: 'Segoe UI', sans-serif; max-width: 750px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                <div class="kepala-header">
-                    <a href="/" style="text-decoration: none; color: #1A5B9C; font-size: 14px; font-weight:bold;">← Kembali</a>
-                    <a href="/portal/invoice/${order.id_order}" target="_blank" style="background-color:#7A4B94; color:white; padding:10px 15px; border-radius:6px; text-decoration:none; font-size:13px; font-weight:bold; text-align:center;">🧾 Lihat & Cetak Invoice</a>
-                </div>
-                
-                <h3 style="color:#7A4B94; margin-top:20px; margin-bottom:5px;">📁 Lembar Kerja Mandiri Terabaca</h3>
-                <p style="margin:0; font-size:14px; color:#4b5563;">Klien: <b>${order.nama_klien}</b> [${order.id_order}]<br>Paket: <b>${order.nama_paket}</b></p>
-                <hr style="border:0; border-top:1px solid #e5e7eb; margin:15px 0;">
-                
-                <div style="background-color: #f0f7ff; padding: 15px; border-radius: 6px; margin-bottom: 25px; border: 1px solid #bae6fd;">
-                    <b style="color: #1A5B9C; font-size: 14px; display:block; margin-bottom:10px;">📋 Sinkronisasi Massal via Template Excel (.xlsx)</b>
-                    <p style="margin: 0 0 5px 0; font-size: 13px; color: #4b5563;"><b>1.</b> Unduh template kosong di sini: <a href="/template-siswa.xlsx" download style="color:#7A4B94; font-weight:bold; text-decoration:underline;">📥 Download Template .xlsx</a></p>
-                    <p style="margin: 0 0 5px 0; font-size: 13px; color: #4b5563;"><b>2.</b> Isi data siswa Anda pada template tersebut.</p>
-                    <p style="margin: 0 0 15px 0; font-size: 13px; color: #4b5563;"><b>3.</b> Upload file yang sudah diisi ke kotak di bawah ini:</p>
-
-                    <form action="/portal/upload-excel-massal/${order.id_order}" method="POST" enctype="multipart/form-data" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:white; padding:15px; border-radius:6px; border:1px dashed #cbd5e1;">
-                        <input type="hidden" name="asal_halaman" value="klien">
-                        <input type="file" name="file_excel" accept=".xlsx, .xls" required style="flex:1 1 200px; font-size:13px; border:1px solid #e5e7eb; padding:8px; border-radius:4px; cursor:pointer;">
-                        <button type="submit" style="background-color:#45A6D9; color:white; border:none; padding:10px 15px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px; flex:1 1 150px;">⚡ Upload & Sinkronisasi</button>
-                    </form>
-                </div>
-
-                <!-- FORM INPUT MANUAL -->
-                <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd;">
-                    <h4 style="margin-top: 0;">Tambah Siswa Manual:</h4>
-                    <form action="/portal/tambah-siswa-manual/${order.id_order}" method="POST" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <input type="text" name="namaSiswa" placeholder="Nama Lengkap" required style="flex: 2; min-width: 150px; padding: 8px;">
-                        <select name="gender" style="padding: 8px;">
-                            <option value="L">L</option>
-                            <option value="P">P</option>
-                        </select>
-                        <input type="text" name="keterangan" placeholder="Level/Kelas" style="flex: 1; min-width: 100px; padding: 8px;">
-                        <button type="submit" style="background: #1A5B9C; color: white; border: none; padding: 8px 15px; cursor: pointer; border-radius: 4px;">Tambah</button>
-                    </form>
-                </div>
-
-                <div style="margin-top:15px;">${daftarAnakFormHtml}</div>
-            </div>
-        </body>
-        </html>
-    `);
+        // TEST: Hanya tampilkan info dasar, JANGAN proses daftar siswa dulu
+        res.send(`
+            <h1>Portal Klien: ${order.id_order}</h1>
+            <p>Nama Klien: ${order.nama_klien}</p>
+            <p>Data Siswa: ${order.data_siswa ? order.data_siswa.length : "Kosong"} anak</p>
+            <a href="/">Kembali</a>
+        `);
+    } catch (err) {
+        res.status(500).send("Debug Error di Portal: " + err.message);
+    }
 });
 
 // INVOICE NOTA RESMI + PRINT PDF
