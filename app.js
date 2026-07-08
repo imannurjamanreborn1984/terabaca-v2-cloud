@@ -231,7 +231,7 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
             <div style="background: #fffdf5; border: 1px dashed #e6a23c; padding: 16px; margin-bottom: 20px; border-radius: 10px;">
                 <h4 style="margin: 0 0 8px 0; color: #c27803;">🏢 Menu Hubungan Lembaga / Sekolah</h4>
                 <p style="font-size: 0.9rem; margin: 0 0 12px 0; color: #666;">Silakan unggah file Excel (.xlsx) data siswa sesuai template untuk memproses nama secara otomatis.</p>
-                <form action="/portal/upload-excel-siswa/${order.id_order}" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: row; gap: 10px; align-items: center;">
+                <form action="/portal/upload-excel-massal/${order.id_order}" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: row; gap: 10px; align-items: center;">
                     <input type="file" name="file_excel" accept=".xlsx" required style="flex: 1;">
                     <button type="submit" style="background-color: #e6a23c; padding: 8px 12px; font-size: 0.9rem; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Proses Excel</button>
                 </form>
