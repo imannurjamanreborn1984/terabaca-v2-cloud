@@ -335,24 +335,84 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
 
         res.send(`
             <!DOCTYPE html>
-            <html>
+            <html lang="id">
             <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Portal Klien</title>
                 <style>
-                    body { font-family: sans-serif; padding: 20px; }
-                    .siswa-card { padding: 15px; border: 1px solid #ddd; margin-bottom: 15px; border-radius: 8px; }
+                    * { box-sizing: border-box; }
+                    body { 
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+                        padding: 16px; 
+                        background-color: #f8f9fa;
+                        color: #333;
+                        line-height: 1.5;
+                        margin: 0;
+                    }
+                    .container { 
+                        max-width: 600px; 
+                        margin: 0 auto; 
+                        background: #ffffff;
+                        padding: 20px;
+                        border-radius: 12px;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+                    }
+                    h2 { color: #1a1a1a; margin-top: 0; font-size: 1.4rem; }
+                    .klien-info { background: #eef2f7; padding: 12px; border-radius: 8px; margin-bottom: 20px; }
+                    .klien-info p { margin: 4px 0; font-size: 0.95rem; }
+                    h3 { font-size: 1.1rem; color: #4a5568; margin-bottom: 12px; }
+                    
+                    .siswa-card { 
+                        padding: 16px; 
+                        border: 1px solid #e2e8f0; 
+                        margin-bottom: 16px; 
+                        border-radius: 10px; 
+                        background: #fff;
+                    }
+                    .siswa-name { font-size: 1.05rem; margin: 0 0 8px 0; color: #2d3748; display: flex; align-items: center; gap: 6px; }
+                    .status-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; margin-bottom: 12px; }
+                    .status-success { background-color: #def7ec; color: #03543f; }
+                    .status-danger { background-color: #fde8e8; color: #9b1c1c; }
+                    
+                    form { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+                    input[type="file"] { 
+                        font-size: 0.9rem; 
+                        padding: 8px; 
+                        border: 1px dashed #cbd5e1; 
+                        border-radius: 6px; 
+                        background: #f8fafc;
+                        cursor: pointer;
+                    }
+                    button { 
+                        background-color: #4f46e5; 
+                        color: white; 
+                        border: none; 
+                        padding: 10px 16px; 
+                        font-size: 0.95rem; 
+                        font-weight: 600; 
+                        border-radius: 6px; 
+                        cursor: pointer; 
+                        transition: background 0.2s;
+                    }
+                    button:hover { background-color: #4338ca; }
+                    .btn-back { display: inline-block; text-align: center; width: 100%; margin-top: 15px; color: #4f46e5; text-decoration: none; font-size: 0.95rem; }
                 </style>
             </head>
             <body>
-                <h2>Portal Klien: ${order.id_order}</h2>
-                <p>Nama Klien: <b>${order.nama_klien || 'Iman'}</b></p>
-                <hr>
-                <h3>Daftar Siswa:</h3>
-                ${daftarAnakFormHtml}
-                <br>
-                <a href="/">Kembali ke Beranda</a>
+                <div class="container">
+                    <h2>Portal Klien</h2>
+                    <div class="klien-info">
+                        <p>📦 <b>ID Order:</b> ${order.id_order}</p>
+                        <p>👤 <b>Nama Klien:</b> ${order.nama_klien || 'Iman'}</p>
+                    </div>
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+                    <h3>Daftar Siswa</h3>
+                    ${daftarAnakFormHtml}
+                    <a href="/" class="btn-back">← Kembali ke Beranda</a>
+                </div>
             </body>
-            </html>
+</html>
         `);
     } catch (err) {
         res.status(500).send("Terjadi error: " + err.message);
