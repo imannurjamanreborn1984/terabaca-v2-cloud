@@ -454,18 +454,151 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
         });
         const berkasSiap = (order.data_siswa && Array.isArray(order.data_siswa)) ? order.data_siswa.filter(s => s.fileScanLokal && s.fileScanLokal.startsWith('http')).length : 0;
         
-        barisTabel += `<tr style="border-bottom:1px solid #e5e7eb;font-size:13px; background-color:white;">
-            <td style="padding:12px;"><b>${order.id_order}</b></td>
-            <td style="padding:12px;"><b>${order.nama_klien || 'Nama Klien Belum Diisi'}</b><br><small style="color:#7A4B94; font-weight:bold;">${order.nama_paket}</small><br><a href="/internal/lihat-siswa/${order.id_order}" style="color:#1A5B9C;font-weight:bold;font-size:11px;">🔎 Kelola Berkas Anak (${berkasSiap}/${order.jumlah_testee || 0} Siap)</a></td>
-            <td style="padding:12px;text-align:center;">${order.jumlah_testee || 0}</td>
-            <td style="padding:12px;">Rp ${(order.total_tagihan || 0).toLocaleString('id-ID')}<br>${order.status_pembayaran==='Lunas'?`<span style="color:#10b981;font-weight:bold;">✔ Lunas</span>`:`<a href="/internal/lunaskan/${order.id_order}" style="color:#C73238; font-weight:bold;">Set Lunas</a>`}</td>
-            <td style="padding:12px;"><form action="/internal/plot-tim/${order.id_order}" method="POST" style="display:flex;flex-direction:column;gap:3px;"><select name="praktisi_lapangan" style="font-size:10px;">${opsiPraktisiLap}</select><select name="praktisi_saji" style="font-size:10px;">${opsiPraktisiSaji}</select><button type="submit" style="font-size:10px; background-color:#1A5B9C; color:white; border:none; padding:4px; border-radius:3px;">Simpan Tim</button></form></td>
-            <td style="padding:12px;font-size:11px;"><b>Lap:</b> ${order.praktisi_lapangan || '-'}<br><b>Saji:</b> ${order.praktisi_saji || '-'}</td>
-            <td style="padding:12px;text-align:center;"><div>${order.status_upload_pusat || '-'}</div><a href="/internal/upload-pusat/${order.id_order}" style="font-size:10px; color:#7A4B94; font-weight:bold;">📤 Struk Pusat</a></td>
+barisTabel += `<tr style="border-bottom:1px solid #e5e7eb;font-size:13px; background-color:white;">
+            <td data-label="ID" style="padding:12px;"><b>${order.id_order}</b></td>
+            <td data-label="Nama Klien" style="padding:12px;"><b>${order.nama_klien || 'Nama Klien Belum Diisi'}</b><br><small style="color:#7A4B94; font-weight:bold;">${order.nama_paket}</small><br><a href="/internal/lihat-siswa/${order.id_order}" style="color:#1A5B9C;font-weight:bold;font-size:11px;">🔎 Kelola Berkas Anak (${berkasSiap}/${order.jumlah_testee || 0} Siap)</a></td>
+            <td data-label="Testee" style="padding:12px;text-align:center;">${order.jumlah_testee || 0}</td>
+            <td data-label="Keuangan" style="padding:12px;">Rp ${(order.total_tagihan || 0).toLocaleString('id-ID')}<br>${order.status_pembayaran==='Lunas'?`<span style="color:#10b981;font-weight:bold;">✔ Lunas</span>`:`<a href="/internal/lunaskan/${order.id_order}" style="color:#C73238; font-weight:bold;">Set Lunas</a>`}</td>
+            <td data-label="Plotting Tim" style="padding:12px;"><form action="/internal/plot-tim/${order.id_order}" method="POST" style="display:flex;flex-direction:column;gap:3px;"><select name="praktisi_lapangan" style="font-size:10px;">${opsiPraktisiLap}</select><select name="praktisi_saji" style="font-size:10px;">${opsiPraktisiSaji}</select><button type="submit" style="font-size:10px; background-color:#1A5B9C; color:white; border:none; padding:4px; border-radius:3px;">Simpan Tim</button></form></td>
+            <td data-label="Status Tim" style="padding:12px;font-size:11px;"><b>Lap:</b> ${order.praktisi_lapangan || '-'}<br><b>Saji:</b> ${order.praktisi_saji || '-'}</td>
+            <td data-label="Setoran Pusat" style="padding:12px;text-align:center;"><div>${order.status_upload_pusat || '-'}</div><a href="/internal/upload-pusat/${order.id_order}" style="font-size:10px; color:#7A4B94; font-weight:bold;">📤 Struk Pusat</a></td>
         </tr>`;
     });
 
-    res.send(`<body style="background-color: #F8F9FA; margin:0;"><div style="font-family:'Segoe UI',sans-serif;padding:25px; max-width: 1200px; margin: 0 auto;"><div style="display:flex;justify-content:space-between;align-items:center;"><h2><span style="color:#7A4B94;">📊 Dashboard Cloud</span> Kantor Cabang Tasikmalaya</h2><div style="display:flex; gap:10px;"><a href="/internal/pengaturan" style="background-color:#1A5B9C;color:white;padding:8px 15px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:bold;">⚙ Pengaturan Sistem</a><a href="/internal/logout" style="background-color:#C73238;color:white;padding:8px 15px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:bold;">🔒 Logout</a></div></div><div style="overflow-x:auto;"><table style="width:100%; min-width:800px; border-collapse:collapse;margin-top:20px;border:1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);"><thead><tr style="background-color:#7A4B94;color:white;text-align:left;font-size:13px;"><th style="padding:12px;">ID</th><th style="padding:12px;">Nama Klien</th><th style="padding:12px;text-align:center;">Testee</th><th style="padding:12px;">Keuangan</th><th style="padding:12px;">Plotting Tim</th><th style="padding:12px;">Status Tim</th><th style="padding:12px;text-align:center;">Setoran Pusat</th></tr></thead><tbody>${barisTabel || '<tr><td colspan="7" style="text-align:center;padding:30px;color:#9ca3af; background-color:white;">Belum ada data pendaftaran di Supabase cloud.</td></tr>'}</tbody></table></div></div></body>`);
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Dashboard Cloud Kantor Cabang Tasikmalaya</title>
+            <style>
+                * { box-sizing: border-box; }
+                body { 
+                    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; 
+                    background-color: #F8F9FA; 
+                    margin: 0; 
+                    padding: 15px; 
+                }
+                .dashboard-container { 
+                    max-width: 1200px; 
+                    margin: 0 auto; 
+                }
+                
+                /* Header Layout */
+                .header-area { 
+                    display: flex; 
+                    justify-content: space-between; 
+                    align-items: center; 
+                    flex-wrap: wrap;
+                    gap: 15px;
+                    margin-bottom: 20px;
+                }
+                .header-area h2 { margin: 0; font-size: 1.5rem; }
+                .grup-tombol-header { display: flex; gap: 10px; }
+                .btn-header { 
+                    color: white; 
+                    padding: 8px 15px; 
+                    border-radius: 6px; 
+                    text-decoration: none; 
+                    font-size: 14px; 
+                    font-weight: bold; 
+                }
+
+                /* Desain Dasar Tabel */
+                .responsive-table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin-top: 20px; 
+                    border: 1px solid #e5e7eb; 
+                    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+                    background-color: white;
+                }
+                .responsive-table th { 
+                    background-color: #7A4B94; 
+                    color: white; 
+                    text-align: left; 
+                    font-size: 13px; 
+                    padding: 12px; 
+                }
+                .responsive-table td { 
+                    padding: 12px; 
+                    border-bottom: 1px solid #e5e7eb; 
+                    font-size: 14px; 
+                    vertical-align: top;
+                }
+
+                /* ===== DESAIN RESPONSIF KHUSUS HP (LAYAR DI BAWAH 850PX) ===== */
+                @media screen and (max-width: 850px) {
+                    .header-area { flex-direction: column; text-align: center; justify-content: center; }
+                    .grup-tombol-header { width: 100%; }
+                    .btn-header { flex: 1; text-align: center; }
+                    
+                    /* Sembunyikan header asli tabel desktop */
+                    .responsive-table thead { display: none; }
+                    
+                    /* Ubah baris tabel (tr) menjadi kartu (card) terpisah */
+                    .responsive-table tr { 
+                        display: block; 
+                        border: 1px solid #7A4B94; 
+                        border-radius: 8px; 
+                        margin-bottom: 15px; 
+                        padding: 10px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                    }
+                    
+                    /* Ubah kolom tabel (td) menjadi berbaris ke bawah */
+                    .responsive-table td { 
+                        display: flex; 
+                        flex-direction: column; 
+                        padding: 6px 4px; 
+                        border-bottom: 1px dashed #f3f4f6;
+                        text-align: left !important; /* Ratakan kiri di HP */
+                    }
+                    .responsive-table td:last-child { border-bottom: none; }
+                    
+                    /* Trik memunculkan label judul kolom otomatis */
+                    .responsive-table td::before {
+                        content: attr(data-label);
+                        font-weight: bold;
+                        color: #7A4B94;
+                        font-size: 11px;
+                        text-transform: uppercase;
+                        margin-bottom: 4px;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="dashboard-container">
+                <div class="header-area">
+                    <h2><span style="color:#7A4B94;"> Bars Dashboard Cloud</span> Kantor Cabang Tasikmalaya</h2>
+                    <div class="grup-tombol-header">
+                        <a href="/internal/pengaturan" class="btn-header" style="background-color:#1A5B9C;">⚙ Pengaturan Sistem</a>
+                        <a href="/internal/logout" class="btn-header" style="background-color:#C73238;">🔒 Logout</a>
+                    </div>
+                </div>
+
+                <table class="responsive-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nama Klien</th>
+                            <th style="text-align:center;">Testee</th>
+                            <th>Keuangan</th>
+                            <th>Plotting Tim</th>
+                            <th>Status Tim</th>
+                            <th style="text-align:center;">Setoran Pusat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${barisTabel || '<tr><td colspan="7" style="text-align:center;padding:30px;color:#9ca3af; background-color:white;">Belum ada data pendaftaran di Supabase cloud.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </body>
+        </html>
+    `);
 });
 
 app.get('/internal/lihat-siswa/:id', pastikanInternal, async (req, res) => {
