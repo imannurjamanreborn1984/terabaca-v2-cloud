@@ -337,6 +337,13 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
         }).join('');
 
         res.send(`
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .siswa-card { padding: 15px; border: 1px solid #ddd; margin-bottom: 15px; border-radius: 8px; }
+    </style>
+    ... (tampilan Anda) ...
+`);
+        res.send(`
             <div style="font-family:sans-serif; max-width:600px; margin:auto; padding:20px;">
                 <h2>Portal Klien: ${order.id_order}</h2>
                 <p>Nama Klien: <b>${order.nama_klien}</b></p>
