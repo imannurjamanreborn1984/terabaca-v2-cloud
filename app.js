@@ -239,7 +239,7 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
             
             <!-- TOMBOL UNDUH TEMPLATE UNTUK PORTAL KLIEN -->
             <div style="margin-bottom: 15px;">
-                <a href="https://drive.google.com/uc?export=download&id=1l5Csrrukh8oLQu88xGtAuXNiLHaEeOJkGpdFsUGPJao">
+                <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQb1SEurxieVn_UaBHIxLCb83YkjOFJ0k6KSKw0oYq3JB4gw17ZFIZzk3aiM66_AKyuKQQxbXUYTUVB/pub?output=xlsx">
                     📥 Unduh Template Excel Resmi
                 </a>
             </div>
