@@ -822,7 +822,24 @@ app.get('/portal/personal', (req, res) => {
     </body>
     </html>`);
 });
+// --- RUTE BARU: UNTUK MENGHAPUS PRAKTISI DARI SUPABASE ---
+app.get('/internal/hapus-praktisi', pastikanInternal, async (req, res) => {
+    const namaYangDihapus = req.query.nama;
+    if (!namaYangDihapus) return res.redirect('/internal/pengaturan');
 
+    // 1. Ambil data praktisi lama dari Supabase
+    const { data: resPraktisi } = await supabase.from('settings').select('value').eq('key', 'daftar_praktisi').single();
+    let daftarPraktisi = resPraktisi.value || [];
+
+    // 2. Saring array untuk membuang nama yang dipilih
+    daftarPraktisi = daftarPraktisi.filter(nama => nama !== namaYangDihapus);
+
+    // 3. Update kembali data array yang sudah bersih ke Supabase Cloud
+    await supabase.from('settings').update({ value: daftarPraktisi }).eq('key', 'daftar_praktisi');
+
+    // 4. Balikkan halaman dengan alert sukses
+    res.send(`<script>alert("Praktisi '${namaYangDihapus}' berhasil dinonaktifkan!"); window.location.href = "/internal/pengaturan";</script>`);
+});
 app.listen(PORT, () => {
     console.log(`==================================================`);
     console.log(` Terabaca Cloud Terkoneksi di http://localhost:${PORT}`);
