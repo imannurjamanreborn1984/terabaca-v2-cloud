@@ -267,17 +267,48 @@ console.log(dataExcel);
 
 app.post('/portal/upload-mandiri-siswa/:idOrder/:idSiswa', upload.single('dokumen_testee'), async (req, res) => {
     const { idOrder, idSiswa } = req.params;
-    const { data: order } = await supabase.from('orders').select('*').eq('id_order', idOrder).single();
-    if (order && req.file) {
-        let listSiswaUpdate = order.data_siswa;
-        const siswa = listSiswaUpdate.find(s => s.idSiswa == idSiswa);
-        if (siswa) {
-            const linkBerkasCloud = await uploadKeSupabaseStorage(req.file, `testee-${idOrder}`);
-            siswa.fileScanLokal = linkBerkasCloud;
+    
+    try {
+        // 1. Ambil data dengan aman
+        const { data: order, error: fetchError } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('id_order', idOrder)
+            .single();
+
+        if (fetchError || !order) {
+            console.error("Gagal ambil order:", fetchError);
+            return res.send("Gagal mengambil data order.");
         }
-        await supabase.from('orders').update({ data_siswa: listSiswaUpdate }).eq('id_order', idOrder);
+
+        // 2. Pastikan file ada dan list siswa ada (tambahkan || [])
+        if (req.file && order.data_siswa) {
+            let listSiswaUpdate = [...order.data_siswa]; // Salin array agar aman
+            const siswa = listSiswaUpdate.find(s => s.idSiswa == idSiswa);
+            
+            if (siswa) {
+                // Upload file
+                const linkBerkasCloud = await uploadKeSupabaseStorage(req.file, `testee-${idOrder}`);
+                siswa.fileScanLokal = linkBerkasCloud;
+
+                // Update ke Supabase
+                const { error: updateError } = await supabase
+                    .from('orders')
+                    .update({ data_siswa: listSiswaUpdate })
+                    .eq('id_order', idOrder);
+
+                if (updateError) {
+                    console.error("Gagal update DB:", updateError);
+                    return res.send("Gagal menyimpan update siswa.");
+                }
+            }
+        }
+        res.redirect(`/portal/workspace-klien/${idOrder}`);
+        
+    } catch (err) {
+        console.error("Error tak terduga:", err);
+        res.send("Terjadi kesalahan sistem.");
     }
-    res.redirect(`/portal/workspace-klien/${idOrder}`);
 });
 
 // WORKSPACE KLIEN
