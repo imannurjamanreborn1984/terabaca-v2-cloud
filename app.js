@@ -497,7 +497,10 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
                 <small style="color:#7A4B94; font-weight:bold;">${order.nama_paket}</small><br>
                 <a href="/internal/lihat-siswa/${order.id_order}" style="color:#1A5B9C;font-weight:bold;font-size:11px;">🔎 Kelola Berkas Anak (${berkasSiap}/${order.jumlah_testee || 0} Siap)</a>
                 <br><a href="/internal/ekspor-testee/${order.id_order}" style="color:#10b981;font-weight:bold;font-size:11px; display:inline-block; margin-top:4px;">📊 Ekspor Data Testee (.xlsx)</a>
-                
+                <!-- TOMBOL HAPUS ORDER MANDIRI -->
+                <form action="/internal/hapus-order/${order.id_order}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus seluruh data order ${order.id_order} ini? Tindakan ini tidak bisa dibatalkan.');" style="display:inline-block; margin-left:10px;">
+                <button type="submit" style="background:none; border:none; color:#C73238; font-weight:bold; font-size:11px; cursor:pointer; padding:0;">❌ Hapus Order</button>
+                </form>
                 <!-- DROPDOWN PENGUBAH STATUS PROGRESS -->
                 <div style="margin-top:8px; padding:6px; background:#f3f4f6; border-radius:4px; border:1px solid #e5e7eb; max-width:260px;">
                     <form action="/internal/update-status-order/${order.id_order}" method="POST" style="display:flex; gap:5px; align-items:center;">
@@ -1397,6 +1400,25 @@ app.get('/internal/semua-testee', pastikanInternal, async (req, res) => {
     } catch (err) {
         console.error("Gagal memuat semua testee:", err);
         res.status(500).send("Gagal memuat master data testee.");
+    }
+});
+app.post('/internal/hapus-order/:idOrder', pastikanInternal, async (req, res) => {
+    const { idOrder } = req.params;
+
+    try {
+        // Hapus baris data berdasarkan id_order di Supabase
+        const { error } = await supabase
+            .from('orders')
+            .delete()
+            .eq('id_order', idOrder);
+
+        if (error) throw error;
+
+        // Refresh halaman dashboard setelah berhasil menghapus
+        return res.send(`<script>alert("Order ${idOrder} berhasil dihapus!"); window.location.reload();</script>`);
+    } catch (err) {
+        console.error("Gagal menghapus order:", err);
+        res.status(500).send("Gagal menghapus data order.");
     }
 });
 app.listen(PORT, () => {
