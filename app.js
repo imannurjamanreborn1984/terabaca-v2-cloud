@@ -1056,7 +1056,13 @@ app.get('/internal/ekspor-testee/:idOrder', pastikanInternal, async (req, res) =
                 "No": index + 1,
                 "ID Order": order.id_order,
                 "Nama Klien/Lembaga": order.nama_lembaga || order.nama_klien || '-', 
+                "Nama Paket": order.nama_paket || '-', // <-- Diambil dari data utama 'order'
                 "Nama Testee": siswa.namaSiswa || siswa.nama || '-', // Akurat membaca 'namaSiswa' hasil upload Excel
+                "Tempat Lahir": siswa.tempatLahir || '-', 
+                "Tanggal Lahir": siswa.tanggalLahir || '-', 
+                "Usia Testee": siswa.usia || '-',
+                "Anak Ke": siswa.anak_ke || '-', // <-- Diambil dari data tiap 'siswa' (jika ada di objek data_siswa)
+                "Dari Bersaudara": siswa.dari_bersaudara || '-', // <-- Diambil dari data tiap 'siswa' (jika ada di objek data_siswa)
                 "Status Berkas": siswa.fileScanLokal && siswa.fileScanLokal.startsWith('http') ? 'Siap' : 'Siap' // Disamakan dengan visual awal
             };
         });
