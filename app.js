@@ -1084,7 +1084,7 @@ app.get('/internal/ekspor-testee/:idOrder', pastikanInternal, async (req, res) =
 });
 app.post('/proses-pendaftaran', upload.single('bukti_bayar'), async (req, res) => {
     const { jenis_pendaftar, kategori, nama_klien, kode_paket, jumlah_testee, kontak, tgl_pelaksanaan, tgl_saji, 
-            ttl, anak_ke, dari_bersaudara, nama_lembaga, nama_cabang, level, jurusan } = req.body;
+            ttl, jenis_kelamin, anak_ke, dari_bersaudara, nama_lembaga, nama_cabang, level, jurusan } = req.body;
     
     const infoPaketTerpilih = hargaPaketMaster[kode_paket];
     const hargaSatuan = (jenis_pendaftar === 'personal') ? infoPaketTerpilih.personal : infoPaketTerpilih.lembaga;
