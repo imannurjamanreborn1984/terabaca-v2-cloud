@@ -626,8 +626,11 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
                 <div class="header-area">
                     <h2><span style="color:#7A4B94;"> Bars Dashboard Cloud</span> Kantor Cabang Tasikmalaya</h2>
                     <div class="grup-tombol-header">
-                        ${apakahPusat ? '' : `<a href="/internal/pengaturan" class="btn-header" style="background-color:#1A5B9C;">⚙ Pengaturan Sistem</a>`}
-                        <a href="/internal/logout" class="btn-header" style="background-color:#C73238;">🔒 Logout</a>
+                    <!-- TOMBOL BARU UNTUK CEK TRAFIK PROGRES -->
+                    <a href="/internal/dashboard-traffic" class="btn-header" style="background-color:#4c1d95;">📊 Cek Trafik Progres</a>
+    
+                    ${apakahPusat ? '' : `<a href="/internal/pengaturan" class="btn-header" style="background-color:#1A5B9C;">⚙ Pengaturan Sistem</a>`}
+                    <a href="/internal/logout" class="btn-header" style="background-color:#C73238;">🔒 Logout</a>
                     </div>
                 </div>
 
