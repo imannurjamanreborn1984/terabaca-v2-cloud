@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
-const xlsx = require('xlsx'); // Tambahan library Excel
+const XLSX = require('xlsx'); // Tambahan library Excel
 
 const app = express();
 const PORT = process.env.PORT || 3005; 
@@ -260,8 +260,8 @@ app.get('/portal/workspace-klien/:id', async (req, res) => {
             <div style="border: 1px solid #e5e7eb; padding: 15px; margin-bottom: 15px; border-radius: 8px; background-color: #fafafa;">
                 <h5 style="margin: 0 0 10px 0; color: #4b5563;">Slot #${index + 1}: ${siswa.namaSiswa} (${siswa.gender || '-'})</h5>
                 <p style="margin: 0 0 10px 0; font-size: 12px; color: #6b7280;">Keterangan/Kelas: ${siswa.keterangan || '-'}</p>
-                <form action="/portal/upload-berkas-siswa/${order.id_order}/${siswa.idSiswa || index+1}" method="POST" enctype="multipart/form-data" style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <input type="file" name="berkas_siswa" accept="image/*,application/pdf" required style="flex:1; font-size:13px;">
+                <form action="/portal/upload-mandiri-siswa/${order.id_order}/${siswa.idSiswa || index+1}" method="POST" enctype="multipart/form-data" style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <input type="file" name="dokumen_testee" accept="image/*,application/pdf" required style="flex:1; font-size:13px;">
                     <button type="submit" style="background-color:#1A5B9C; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:13px; font-weight:bold;">Upload Berkas</button>
                 </form>
                 <div style="margin-top: 8px; font-size: 12px;">
@@ -1082,6 +1082,51 @@ app.get('/internal/ekspor-testee/:idOrder', pastikanInternal, async (req, res) =
         res.status(500).send("Gagal mengekspor data siswa ke Excel.");
     }
 });
+app.post('/proses-pendaftaran', upload.single('bukti_bayar'), async (req, res) => {
+    const { jenis_pendaftar, kategori, nama_klien, kode_paket, jumlah_testee, kontak, tgl_pelaksanaan, tgl_saji, 
+            ttl, anak_ke, dari_bersaudara, nama_lembaga, nama_cabang, level, jurusan } = req.body;
+    
+    const infoPaketTerpilih = hargaPaketMaster[kode_paket];
+    const hargaSatuan = (jenis_pendaftar === 'personal') ? infoPaketTerpilih.personal : infoPaketTerpilih.lembaga;
+    const totalTagihan = hargaSatuan * parseInt(jumlah_testee || 1);
+    
+    const linkBuktiBayarCloud = await uploadKeSupabaseStorage(req.file, 'bukti');
+
+    let listNamaAnak = [];
+    for(let i = 1; i <= parseInt(jumlah_testee || 1); i++) {
+        listNamaAnak.push({ idSiswa: i, namaSiswa: `Siswa Slot ke-${i}`, gender: '-', keterangan: '-', fileScanLokal: 'Belum Ada', statusFormPusat: '❌ Belum Dikirim' });
+    }
+
+    const idOrderBaru = 'TRBC-' + Math.floor(Math.random() * 9000 + 1000);
+
+    const { error } = await supabase.from('orders').insert([{
+        id_order: idOrderBaru,
+        kategori: kategori,
+        nama_klien: nama_klien,
+        nama_paket: infoPaketTerpilih.nama,
+        jumlah_testee: parseInt(jumlah_testee || 1),
+        kontak: kontak,
+        harga_satuan: hargaSatuan,
+        total_tagihan: totalTagihan,
+        tgl_pelaksanaan: tgl_pelaksanaan,
+        tgl_saji: tgl_saji || 'Menyesuaikan',
+        bukti_bayar_file: linkBuktiBayarCloud,
+        data_siswa: listNamaAnak,
+        ttl: ttl,
+        jenis_kelamin: jenis_kelamin,
+        anak_ke: parseInt(anak_ke || 0),
+        dari_bersaudara: parseInt(dari_bersaudara || 0),
+        nama_lembaga: nama_lembaga,
+        nama_cabang: nama_cabang,
+        level: level,
+        jurusan: jurusan
+    }]);
+
+    if(error) return res.status(500).send("Database Supabase Gagal Menyimpan: " + error.message);
+
+    res.send(`<h2>Sukses!</h2><p>ID Order: ${idOrderBaru}</p><a href="/">Kembali</a>`);
+});
+
 app.listen(PORT, () => {
     console.log(`==================================================`);
     console.log(` Terabaca Cloud Terkoneksi di http://localhost:${PORT}`);
@@ -1096,10 +1141,10 @@ app.post('/portal/upload-excel-massal/:idOrder', upload.single('file_excel'), as
     if (!req.file) return res.send(`<script>alert("File Excel tidak ditemukan!"); window.history.back();</script>`);
 
     try {
-        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0]; 
         const sheet = workbook.Sheets[sheetName];
-        const dataExcel = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+        const dataExcel = XLSX.utils.sheet_to_json(sheet, { header: 1 });
         
         console.log("ISI DATA EXCEL YANG DIBACA:", dataExcel);
 
