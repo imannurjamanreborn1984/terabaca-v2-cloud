@@ -443,7 +443,7 @@ app.get('/internal/logout', (req, res) => { sessionSandiBenar = false; res.redir
 // DASHBOARD UTAMA MANAJEMEN INTERNAL
 app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
     const { data: listOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-    const { data: settingPraktisi } = await supabase.from('settings').select('value').eq('key', 'daftar_practisi').single();
+    const { data: settingPraktisi } = await supabase.from('settings').select('value').eq('key', 'daftar_praktisi').single();
     const daftarPraktisi = (settingPraktisi && settingPraktisi.value) ? settingPraktisi.value : [];
     
     // DETEKSI APAKAH YANG LOGIN ADALAH TIM PUSAT
@@ -493,7 +493,9 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
                 <b>${order.nama_klien || 'Nama Klien Belum Diisi'}</b><br>
                 <small style="color:#7A4B94; font-weight:bold;">${order.nama_paket}</small><br>
                 <a href="/internal/lihat-siswa/${order.id_order}" style="color:#1A5B9C;font-weight:bold;font-size:11px;">🔎 Kelola Berkas Anak (${berkasSiap}/${order.jumlah_testee || 0} Siap)</a>
-            </td>
+                <!-- TAMBAHKAN TOMBOL EKSPOR INI -->
+                <br><a href="/internal/ekspor-testee/${order.id_order}" style="color:#10b981;font-weight:bold;font-size:11px; display:inline-block; margin-top:4px;">📊 Ekspor Data Testee (.xlsx)</a>
+                </td>
             <td data-label="Testee" style="padding:12px;text-align:center;">${order.jumlah_testee || 0}</td>
             <td data-label="Keuangan" style="padding:12px;">${kolomKeuanganHtml}</td>
             <td data-label="Plotting Tim" style="padding:12px;">${kolomPlotTimHtml}</td>
