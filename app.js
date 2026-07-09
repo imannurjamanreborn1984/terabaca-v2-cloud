@@ -1115,7 +1115,7 @@ app.post('/proses-pendaftaran', upload.single('bukti_bayar'), async (req, res) =
         ttl: ttl,
         jenis_kelamin: jenis_kelamin,
         anak_ke: parseInt(anak_ke || 0),
-        dari_bersaudara: parseInt(dari_bersaudara || 0),//
+        //dari_bersaudara: parseInt(dari_bersaudara || 0),
         nama_lembaga: nama_lembaga,
         nama_cabang: nama_cabang,
         level: level,
