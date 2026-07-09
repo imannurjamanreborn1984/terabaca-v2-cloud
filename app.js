@@ -1153,24 +1153,41 @@ app.post('/portal/upload-excel-massal/:idOrder', upload.single('file_excel'), as
         if (order && dataExcel.length > 0) {
             let listSiswaUpdate = order.data_siswa || [];
             
-            // 1. Mencari otomatis di baris ke berapa judul "Nama" berada
+            // 1. Mencari otomatis posisi indeks kolom berdasarkan teks judulnya
             let startIndex = 0;
+            let idxNama = -1;
+            let idxGender = -1;
+            let idxLevel = -1;
+
             for (let j = 0; j < dataExcel.length; j++) {
                 if (dataExcel[j]) {
-                    const baris = dataExcel[j].map(cell => String(cell || '').toLowerCase());
-                    if (baris.includes('nama') && baris.includes('jenis kelamin')) {
-                        startIndex = j + 1; // Mulai ambil data tepat 1 baris di bawah judul
+                    // Ubah semua judul kolom menjadi huruf kecil untuk menghindari sensitivitas huruf besar/kecil
+                    const baris = dataExcel[j].map(cell => String(cell || '').toLowerCase().trim());
+                    
+                    if (baris.includes('nama')) {
+                        idxNama = baris.indexOf('nama');
+                        // Cari indeks untuk jenis kelamin (bisa mendeteksi kata 'jenis kelamin' atau 'gender')
+                        idxGender = baris.findIndex(cell => cell.includes('jenis kelamin') || cell.includes('gender'));
+                        // Cari indeks untuk level atau jenjang/keterangan jika ada
+                        idxLevel = baris.findIndex(cell => cell.includes('level') || cell.includes('keterangan') || cell.includes('jurusan'));
+                        
+                        startIndex = j + 1; // Data siswa dimulai tepat 1 baris di bawah judul
                         break;
                     }
                 }
             }
 
-            // 2. Menarik data sesuai letak kolom di template asli
+            // Pengaman: Jika kolom 'nama' tidak ditemukan sama sekali di Excel
+            if (idxNama === -1) {
+                return res.send(`<script>alert("Format Excel salah! Kolom 'Nama' tidak ditemukan."); window.history.back();</script>`);
+            }
+
+            // 2. Menarik data siswa secara dinamis berdasarkan indeks yang sudah ditemukan
             let excelRowIndex = startIndex;
             for (let i = 0; i < listSiswaUpdate.length; i++) {
                 
                 // Lewati baris kosong jika penginput tidak sengaja melompati baris di Excel
-                while(dataExcel[excelRowIndex] && (!dataExcel[excelRowIndex][1] || String(dataExcel[excelRowIndex][1]).trim() === '')) {
+                while(dataExcel[excelRowIndex] && (!dataExcel[excelRowIndex][idxNama] || String(dataExcel[excelRowIndex][idxNama]).trim() === '')) {
                     excelRowIndex++;
                     if(excelRowIndex >= dataExcel.length) break;
                 }
@@ -1178,15 +1195,20 @@ app.post('/portal/upload-excel-massal/:idOrder', upload.single('file_excel'), as
                 if (dataExcel[excelRowIndex]) {
                     const barisData = dataExcel[excelRowIndex];
                     
-                    // Indeks 1 = Kolom Nama | Indeks 3 = Kolom Jenis Kelamin | Indeks 10 = Kolom Level
-                    listSiswaUpdate[i].namaSiswa  = barisData[1] ? String(barisData[1]).trim() : listSiswaUpdate[i].namaSiswa;
-                    listSiswaUpdate[i].gender     = barisData[3] ? String(barisData[3]).trim() : '-';
-                    listSiswaUpdate[i].keterangan = barisData[10] ? String(barisData[10]).trim() : '-';
+                    // Isi data secara dinamis berdasarkan posisi kolom yang dideteksi di atas
+                    listSiswaUpdate[i].namaSiswa  = barisData[idxNama] ? String(barisData[idxNama]).trim() : listSiswaUpdate[i].namaSiswa;
+                    
+                    if (idxGender !== -1) {
+                        listSiswaUpdate[i].gender = barisData[idxGender] ? String(barisData[idxGender]).trim() : '-';
+                    }
+                    if (idxLevel !== -1) {
+                        listSiswaUpdate[i].keterangan = barisData[idxLevel] ? String(barisData[idxLevel]).trim() : '-';
+                    }
                 }
                 excelRowIndex++;
             }
             
-            // Simpan pembaruan nama ke Supabase
+            // Simpan pembaruan nama asli ke Supabase
             await supabase.from('orders').update({ data_siswa: listSiswaUpdate }).eq('id_order', idOrder);
         }
         
