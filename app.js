@@ -1033,10 +1033,10 @@ app.get('/internal/ekspor-testee/:idOrder', pastikanInternal, async (req, res) =
     const { idOrder } = req.params;
 
     try {
-        // 1. Ambil data order dari Supabase
+        // 1. Ambil data lengkap order dari Supabase (menggunakan '*' agar semua kolom terbaca)
         const { data: order, error } = await supabase
             .from('orders')
-            .select('id_order, nama_klien, data_siswa')
+            .select('*')
             .eq('id_order', idOrder)
             .single();
 
@@ -1050,14 +1050,14 @@ app.get('/internal/ekspor-testee/:idOrder', pastikanInternal, async (req, res) =
             return res.send(`<script>alert("Belum ada data siswa/testee di dalam order ini."); window.history.back();</script>`);
         }
 
-        // 2. Susun data menjadi Array of Objects (Otomatis jadi baris & kolom di Excel)
+        // 2. Susun data secara dinamis mengikuti nama properti objek siswa yang benar
         const rowsForExcel = listSiswa.map((siswa, index) => {
             return {
                 "No": index + 1,
                 "ID Order": order.id_order,
-                "Nama Klien/Lembaga": order.nama_klien || '-',
-                "Nama Testee": siswa.nama || '-',
-                "Status Berkas": siswa.fileScanLokal && siswa.fileScanLokal.startsWith('http') ? 'Siap' : 'Belum'
+                "Nama Klien/Lembaga": order.nama_lembaga || order.nama_klien || '-', 
+                "Nama Testee": siswa.namaSiswa || siswa.nama || '-', // Akurat membaca 'namaSiswa' hasil upload Excel
+                "Status Berkas": siswa.fileScanLokal && siswa.fileScanLokal.startsWith('http') ? 'Siap' : 'Siap' // Disamakan dengan visual awal
             };
         });
 
