@@ -1028,6 +1028,60 @@ app.post('/internal/simpan-upload-pusat/:idOrder', pastikanInternal, upload.sing
         res.status(500).send(`Gagal memproses unggahan: ${err.message || err}`);
     }
 });
+// --- RUTE: EKSPOR DATA TESTEE LANGSUNG KE EXCEL (.XLSX) ---
+app.get('/internal/ekspor-testee/:idOrder', pastikanInternal, async (req, res) => {
+    const { idOrder } = req.params;
+
+    try {
+        // 1. Ambil data order dari Supabase
+        const { data: order, error } = await supabase
+            .from('orders')
+            .select('id_order, nama_klien, data_siswa')
+            .eq('id_order', idOrder)
+            .single();
+
+        if (error || !order) {
+            return res.send(`<script>alert("Data order tidak ditemukan!"); window.history.back();</script>`);
+        }
+
+        const listSiswa = order.data_siswa || [];
+
+        if (listSiswa.length === 0) {
+            return res.send(`<script>alert("Belum ada data siswa/testee di dalam order ini."); window.history.back();</script>`);
+        }
+
+        // 2. Susun data menjadi Array of Objects (Otomatis jadi baris & kolom di Excel)
+        const rowsForExcel = listSiswa.map((siswa, index) => {
+            return {
+                "No": index + 1,
+                "ID Order": order.id_order,
+                "Nama Klien/Lembaga": order.nama_klien || '-',
+                "Nama Testee": siswa.nama || '-',
+                "Status Berkas": siswa.fileScanLokal && siswa.fileScanLokal.startsWith('http') ? 'Siap' : 'Belum'
+            };
+        });
+
+        // 3. Proses pembuatan file Excel menggunakan SheetJS (xlsx)
+        const worksheet = XLSX.utils.json_to_sheet(rowsForExcel);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Data Testee");
+
+        // 4. Ubah workbook menjadi buffer memori agar bisa langsung dikirim ke browser
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+
+        // 5. Set Header HTTP untuk file Excel asli
+        const namaFileClean = `Data-Testee-${idOrder}-${Date.now()}.xlsx`;
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${namaFileClean}"`);
+
+        // 6. Kirim file Excel ke browser/HP untuk otomatis terdownload
+        return res.status(200).send(excelBuffer);
+
+    } catch (err) {
+        console.error("Error Ekspor XLSX:", err);
+        res.status(500).send("Gagal mengekspor data siswa ke Excel.");
+    }
+});
 app.listen(PORT, () => {
     console.log(`==================================================`);
     console.log(` Terabaca Cloud Terkoneksi di http://localhost:${PORT}`);
