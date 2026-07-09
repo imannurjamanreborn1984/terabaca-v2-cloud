@@ -1132,7 +1132,127 @@ app.post('/proses-pendaftaran', upload.single('bukti_bayar'), async (req, res) =
 
     res.send(`<h2>Sukses!</h2><p>ID Order: ${idOrderBaru}</p><a href="/">Kembali</a>`);
 });
+app.get('/internal/dashboard-traffic', pastikanInternal, async (req, res) => {
+    try {
+        // 1. Ambil semua data order yang ada dari Supabase
+        const { data: semuaOrder, error } = await supabase
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false });
 
+        if (error) throw error;
+
+        // 2. Hitung statistik untuk kotak ringkasan (Stat Cards)
+        let totalAkan = 0;
+        let totalSedang = 0;
+        let totalSudah = 0;
+
+        semuaOrder.forEach(order => {
+            const status = order.status_order || 'akan_ditangani';
+            if (status === 'sudah_ditangani') totalSudah++;
+            else if (status === 'sedang_ditangani') totalSedang++;
+            else totalAkan++;
+        });
+
+        // 3. Susun baris tabel secara dinamis berdasarkan data database
+        let barisTabelHtml = '';
+        semuaOrder.forEach((order, index) => {
+            let badgeHtml = '';
+            if (order.status_order === 'sudah_ditangani') {
+                badgeHtml = '<span class="badge badge-sudah">Selesai</span>';
+            } else if (order.status_order === 'sedang_ditangani') {
+                badgeHtml = '<span class="badge badge-sedang">Sedang Diproses</span>';
+            } else {
+                badgeHtml = '<span class="badge badge-akan">Antrean (Akan)</span>';
+            }
+
+            barisTabelHtml += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td><strong>${order.id_order}</strong></td>
+                    <td>${order.nama_lembaga || order.nama_klien || 'Belum Diisi'}</td>
+                    <td>${order.jumlah_testee || 0} Anak</td>
+                    <td>${badgeHtml}</td>
+                </tr>
+            `;
+        });
+
+        // 4. Kirimkan struktur HTML lengkap langsung ke browser
+        res.send(`
+            <!DOCTYPE html>
+            <html lang="id">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Traffic Progress Layanan</title>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; margin: 20px; color: #333; }
+                    h2 { color: #4c1d95; }
+                    .stat-container { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
+                    .card { flex: 1; min-width: 200px; padding: 20px; border-radius: 8px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                    .card-akan { background: #f59e0b; }
+                    .card-sedang { background: #3b82f6; }
+                    .card-sudah { background: #10b981; }
+                    .card h3 { margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+                    .card .angka { font-size: 32px; font-weight: bold; }
+                    
+                    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 15px; }
+                    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+                    th { background-color: #4c1d95; color: white; }
+                    tr:hover { background-color: #f9fafb; }
+                    
+                    .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; }
+                    .badge-akan { background: #fef3c7; color: #d97706; }
+                    .badge-sedang { background: #dbeafe; color: #2563eb; }
+                    .badge-sudah { background: #d1fae5; color: #059669; }
+                </style>
+            </head>
+            <body>
+
+                <h2>📊 Traffic Progress Layanan Klien</h2>
+                <p>Pantauan data real-time semua pendaftaran dan proses pengerjaan testee.</p>
+
+                <!-- KOTAK STATISTIK RINGKASAN -->
+                <div class="stat-container">
+                    <div class="card card-akan">
+                        <h3>Akan Ditangani</h3>
+                        <div class="angka">${totalAkan}</div>
+                    </div>
+                    <div class="card card-sedang">
+                        <h3>Sedang Diproses</h3>
+                        <div class="angka">${totalSedang}</div>
+                    </div>
+                    <div class="card card-sudah">
+                        <h3>Selesai Dilayani</h3>
+                        <div class="angka">${totalSudah}</div>
+                    </div>
+                </div>
+
+                <!-- TABEL DETIL PROGRESS KLIEN -->
+                <table>
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>ID Order</th>
+                            <th>Nama Klien / Lembaga</th>
+                            <th>Jumlah Testee</th>
+                            <th>Status Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${barisTabelHtml || '<tr><td colspan="5" style="text-align:center;">Belum ada data order masuk.</td></tr>'}
+                    </tbody>
+                </table>
+
+            </body>
+            </html>
+        `);
+
+    } catch (err) {
+        console.error("Gagal memuat dashboard traffic:", err);
+        res.status(500).send("Gagal memuat data pemantau progress.");
+    }
+});
 app.listen(PORT, () => {
     console.log(`==================================================`);
     console.log(` Terabaca Cloud Terkoneksi di http://localhost:${PORT}`);
