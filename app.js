@@ -486,6 +486,9 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
             `;
         }
         
+        // AMBIL STATUS SEKARANG UNTUK DROPDOWN
+        const statusSekarang = order.status_order || 'akan_ditangani';
+
         barisTabel += `
         <tr style="border-bottom:1px solid #e5e7eb;font-size:13px; background-color:white;">
             <td data-label="ID" style="padding:12px;"><b>${order.id_order}</b></td>
@@ -493,15 +496,25 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
                 <b>${order.nama_klien || 'Nama Klien Belum Diisi'}</b><br>
                 <small style="color:#7A4B94; font-weight:bold;">${order.nama_paket}</small><br>
                 <a href="/internal/lihat-siswa/${order.id_order}" style="color:#1A5B9C;font-weight:bold;font-size:11px;">🔎 Kelola Berkas Anak (${berkasSiap}/${order.jumlah_testee || 0} Siap)</a>
-                <!-- TAMBAHKAN TOMBOL EKSPOR INI -->
                 <br><a href="/internal/ekspor-testee/${order.id_order}" style="color:#10b981;font-weight:bold;font-size:11px; display:inline-block; margin-top:4px;">📊 Ekspor Data Testee (.xlsx)</a>
-                </td>
+                
+                <!-- DROPDOWN PENGUBAH STATUS PROGRESS -->
+                <div style="margin-top:8px; padding:6px; background:#f3f4f6; border-radius:4px; border:1px solid #e5e7eb; max-width:260px;">
+                    <form action="/internal/update-status-order/${order.id_order}" method="POST" style="display:flex; gap:5px; align-items:center;">
+                        <select name="status_baru" style="font-size:11px; padding:3px; border-radius:3px; border:1px solid #ccc; flex:1;">
+                            <option value="akan_ditangani" ${statusSekarang === 'akan_ditangani' ? 'selected' : ''}>⏳ Antrean (Akan)</option>
+                            <option value="sedang_ditangani" ${statusSekarang === 'sedang_ditangani' ? 'selected' : ''}>🔄 Sedang Diproses</option>
+                            <option value="sudah_ditangani" ${statusSekarang === 'sudah_ditangani' ? 'selected' : ''}>✅ Selesai Dilayani</option>
+                        </select>
+                        <button type="submit" style="font-size:11px; background-color:#7A4B94; color:white; border:none; padding:3px 8px; border-radius:3px; cursor:pointer; font-weight:bold;">Set</button>
+                    </form>
+                </div>
+            </td>
             <td data-label="Testee" style="padding:12px;text-align:center;">${order.jumlah_testee || 0}</td>
             <td data-label="Keuangan" style="padding:12px;">${kolomKeuanganHtml}</td>
             <td data-label="Plotting Tim" style="padding:12px;">${kolomPlotTimHtml}</td>
             <td data-label="Status Tim" style="padding:12px;font-size:11px;"><b>Lap:</b> ${order.praktisi_lapangan || '-'}<br><b>Saji:</b> ${order.praktisi_saji || '-'}</td>
             
-            <!-- PERBAIKAN REDAKSI: STRUK PUSAT -> HASIL TEST -->
             <td data-label="Hasil Test" style="padding:12px;text-align:center;">
                 <div>${order.status_upload_pusat || '-'}</div>
                 <a href="/internal/upload-pusat/${order.id_order}" style="display:inline-block; margin-top:5px; padding:4px 8px; background-color:#7A4B94; color:white; text-decoration:none; border-radius:4px; font-size:10px; font-weight:bold;">📤 Hasil Test</a>
@@ -572,7 +585,6 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
                     vertical-align: top;
                 }
 
-                /* ===== DESAIN RESPONSIF KHUSUS HP ===== */
                 @media screen and (max-width: 850px) {
                     .header-area { flex-direction: column; text-align: center; justify-content: center; }
                     .grup-tombol-header { width: 100%; }
@@ -614,7 +626,6 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
                 <div class="header-area">
                     <h2><span style="color:#7A4B94;"> Bars Dashboard Cloud</span> Kantor Cabang Tasikmalaya</h2>
                     <div class="grup-tombol-header">
-                        <!-- SEMBUNYIKAN TOMBOL PENGATURAN JIKA YANG MASUK ADALAH AKUN PUSAT -->
                         ${apakahPusat ? '' : `<a href="/internal/pengaturan" class="btn-header" style="background-color:#1A5B9C;">⚙ Pengaturan Sistem</a>`}
                         <a href="/internal/logout" class="btn-header" style="background-color:#C73238;">🔒 Logout</a>
                     </div>
@@ -629,7 +640,6 @@ app.get('/internal/dashboard', pastikanInternal, async (req, res) => {
                             <th>Keuangan</th>
                             <th>Plotting Tim</th>
                             <th>Status Tim</th>
-                            <!-- PERBAIKAN HEADER DESKTOP -->
                             <th style="text-align:center;">Hasil Test</th>
                         </tr>
                     </thead>
@@ -1251,6 +1261,24 @@ app.get('/internal/dashboard-traffic', pastikanInternal, async (req, res) => {
     } catch (err) {
         console.error("Gagal memuat dashboard traffic:", err);
         res.status(500).send("Gagal memuat data pemantau progress.");
+    }
+});
+app.post('/internal/update-status-order/:idOrder', pastikanInternal, async (req, res) => {
+    const { idOrder } = req.params;
+    const { status_baru } = req.body;
+
+    try {
+        const { error } = await supabase
+            .from('orders')
+            .update({ status_order: status_baru })
+            .eq('id_order', idOrder);
+
+        if (error) throw error;
+
+        return res.send(`<script>alert("Status order berhasil diperbarui!"); window.location.reload();</script>`);
+    } catch (err) {
+        console.error("Gagal update status:", err);
+        res.status(500).send("Gagal memperbarui status order.");
     }
 });
 app.listen(PORT, () => {
